@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Inventory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\QueryException;
 
@@ -61,10 +62,47 @@ class InventoryController extends Controller
         // merge unique, keep order: existing first, then defaults not already included
         $all = $existing;
         foreach ($defaults as $d) {
-            if (!in_array($d, $all, true)) $all[] = $d;
+            if (!in_array($d, $all, true)) {
+                $all[] = $d;
+            }
         }
 
         return $all;
+    }
+
+    /**
+     * Copy a file from storage/app/public to public/storage.
+     */
+    protected function syncPublicFile(string $relativePath): void
+    {
+        $source = storage_path('app/public/' . $relativePath);
+        $target = public_path('storage/' . $relativePath);
+        $targetDir = dirname($target);
+
+        if (!File::exists($targetDir)) {
+            File::makeDirectory($targetDir, 0755, true);
+        }
+
+        if (File::exists($source)) {
+            File::copy($source, $target);
+        }
+    }
+
+    /**
+     * Delete file from both storage/app/public and public/storage.
+     */
+    protected function deletePublicFile(?string $relativePath): void
+    {
+        if (!$relativePath) {
+            return;
+        }
+
+        Storage::disk('public')->delete($relativePath);
+
+        $publicFile = public_path('storage/' . $relativePath);
+        if (File::exists($publicFile)) {
+            File::delete($publicFile);
+        }
     }
 
     public function index(Request $request)
@@ -82,7 +120,7 @@ class InventoryController extends Controller
         }
 
         if ($request->filled('search')) {
-            $q->where('equipment_name', 'like', '%'.$request->search.'%');
+            $q->where('equipment_name', 'like', '%' . $request->search . '%');
         }
 
         $perPage = $request->get('per_page', '10');
@@ -97,7 +135,10 @@ class InventoryController extends Controller
 
         $categories = Inventory::query()
             ->where('user_id', auth()->id())
-            ->select('category')->distinct()->orderBy('category')->pluck('category');
+            ->select('category')
+            ->distinct()
+            ->orderBy('category')
+            ->pluck('category');
 
         // status untuk filter UI (DB enum)
         $statuses = ['active', 'maintenance', 'inactive'];
@@ -114,55 +155,57 @@ class InventoryController extends Controller
     }
 
     public function store(Request $request)
-{
-    $data = $request->validate([
-        'equipment_name'   => ['required','string','max:120'],
+    {
+        $data = $request->validate([
+            'equipment_name'   => ['required', 'string', 'max:120'],
 
-        'category_choice'  => ['required','string','max:80'],
-        'category_other'   => ['nullable','string','max:80'],
+            'category_choice'  => ['required', 'string', 'max:80'],
+            'category_other'   => ['nullable', 'string', 'max:80'],
 
-        'quantity'         => ['required','integer','min:0'],
-        'price'            => ['required','numeric','min:0'],
-        'status'           => ['required','in:active,maintenance,inactive'],
+            'quantity'         => ['required', 'integer', 'min:0'],
+            'price'            => ['required', 'numeric', 'min:0'],
+            'status'           => ['required', 'in:active,maintenance,inactive'],
 
-        'image'            => ['nullable','image','max:2048'],
-    ]);
+            'image'            => ['nullable', 'image', 'max:2048'],
+        ]);
 
-    $categoryFinal = $data['category_choice'] === 'other'
-        ? trim((string)($data['category_other'] ?? ''))
-        : $data['category_choice'];
+        $categoryFinal = $data['category_choice'] === 'other'
+            ? trim((string) ($data['category_other'] ?? ''))
+            : $data['category_choice'];
 
-    if ($data['category_choice'] === 'other' && $categoryFinal === '') {
-        return back()->withErrors(['category_other' => 'Category (Other) wajib diisi.'])->withInput();
-    }
-
-    $payload = [
-        'user_id'        => auth()->id(),
-        'equipment_name' => trim($data['equipment_name']),
-        'category'       => $categoryFinal,
-        'quantity'       => (int)$data['quantity'],
-        'price'          => (int)$data['price'],
-        'status'         => $this->normalizeStatus($data['status']),
-    ];
-
-    if ($request->hasFile('image')) {
-        $payload['image_path'] = $request->file('image')->store('inventories', 'public');
-    }
-
-    try {
-        Inventory::create($payload);
-    } catch (QueryException $e) {
-        // 1062 = duplicate key MySQL
-        if ((int)($e->errorInfo[1] ?? 0) === 1062) {
-            return back()
-                ->withInput()
-                ->withErrors(['equipment_name' => 'Peralatan sudah ada. Silakan edit data yang sudah ada atau ganti nama.']);
+        if ($data['category_choice'] === 'other' && $categoryFinal === '') {
+            return back()->withErrors(['category_other' => 'Category (Other) wajib diisi.'])->withInput();
         }
-        throw $e; // error lain biar ketahuan
-    }
 
-    return redirect()->route('inventories.index')->with('success', 'Equipment added.');
-}
+        $payload = [
+            'user_id'        => auth()->id(),
+            'equipment_name' => trim($data['equipment_name']),
+            'category'       => $categoryFinal,
+            'quantity'       => (int) $data['quantity'],
+            'price'          => (int) $data['price'],
+            'status'         => $this->normalizeStatus($data['status']),
+        ];
+
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('inventories', 'public');
+            $this->syncPublicFile($path);
+            $payload['image_path'] = $path;
+        }
+
+        try {
+            Inventory::create($payload);
+        } catch (QueryException $e) {
+            // 1062 = duplicate key MySQL
+            if ((int) ($e->errorInfo[1] ?? 0) === 1062) {
+                return back()
+                    ->withInput()
+                    ->withErrors(['equipment_name' => 'Peralatan sudah ada. Silakan edit data yang sudah ada atau ganti nama.']);
+            }
+            throw $e;
+        }
+
+        return redirect()->route('inventories.index')->with('success', 'Equipment added.');
+    }
 
     public function edit(Inventory $inventory)
     {
@@ -175,65 +218,68 @@ class InventoryController extends Controller
     }
 
     public function update(Request $request, Inventory $inventory)
-{
-    $this->guardOwner($inventory);
+    {
+        $this->guardOwner($inventory);
 
-    $data = $request->validate([
-        'equipment_name'   => ['required','string','max:120'],
+        $data = $request->validate([
+            'equipment_name'   => ['required', 'string', 'max:120'],
 
-        'category_choice'  => ['required','string','max:80'],
-        'category_other'   => ['nullable','string','max:80'],
+            'category_choice'  => ['required', 'string', 'max:80'],
+            'category_other'   => ['nullable', 'string', 'max:80'],
 
-        'quantity'         => ['required','integer','min:0'],
-        'price'            => ['required','numeric','min:0'],
-        'status'           => ['required','in:active,maintenance,inactive'],
+            'quantity'         => ['required', 'integer', 'min:0'],
+            'price'            => ['required', 'numeric', 'min:0'],
+            'status'           => ['required', 'in:active,maintenance,inactive'],
 
-        'image'            => ['nullable','image','max:2048'],
-    ]);
+            'image'            => ['nullable', 'image', 'max:2048'],
+        ]);
 
-    $categoryFinal = $data['category_choice'] === 'other'
-        ? trim((string)($data['category_other'] ?? ''))
-        : $data['category_choice'];
+        $categoryFinal = $data['category_choice'] === 'other'
+            ? trim((string) ($data['category_other'] ?? ''))
+            : $data['category_choice'];
 
-    if ($data['category_choice'] === 'other' && $categoryFinal === '') {
-        return back()->withErrors(['category_other' => 'Category (Other) wajib diisi.'])->withInput();
-    }
-
-    $payload = [
-        'equipment_name' => trim($data['equipment_name']),
-        'category'       => $categoryFinal,
-        'quantity'       => (int)$data['quantity'],
-        'price'          => (int)$data['price'],
-        'status'         => $this->normalizeStatus($data['status']),
-    ];
-
-    if ($request->hasFile('image')) {
-        if ($inventory->image_path) {
-            Storage::disk('public')->delete($inventory->image_path);
+        if ($data['category_choice'] === 'other' && $categoryFinal === '') {
+            return back()->withErrors(['category_other' => 'Category (Other) wajib diisi.'])->withInput();
         }
-        $payload['image_path'] = $request->file('image')->store('inventories', 'public');
-    }
 
-    try {
-        $inventory->update($payload);
-    } catch (QueryException $e) {
-        if ((int)($e->errorInfo[1] ?? 0) === 1062) {
-            return back()
-                ->withInput()
-                ->withErrors(['equipment_name' => 'Peralatan sudah ada. Silakan edit data yang sudah ada atau ganti nama.']);
+        $payload = [
+            'equipment_name' => trim($data['equipment_name']),
+            'category'       => $categoryFinal,
+            'quantity'       => (int) $data['quantity'],
+            'price'          => (int) $data['price'],
+            'status'         => $this->normalizeStatus($data['status']),
+        ];
+
+        if ($request->hasFile('image')) {
+            if ($inventory->image_path) {
+                $this->deletePublicFile($inventory->image_path);
+            }
+
+            $path = $request->file('image')->store('inventories', 'public');
+            $this->syncPublicFile($path);
+            $payload['image_path'] = $path;
         }
-        throw $e;
+
+        try {
+            $inventory->update($payload);
+        } catch (QueryException $e) {
+            if ((int) ($e->errorInfo[1] ?? 0) === 1062) {
+                return back()
+                    ->withInput()
+                    ->withErrors(['equipment_name' => 'Peralatan sudah ada. Silakan edit data yang sudah ada atau ganti nama.']);
+            }
+            throw $e;
+        }
+
+        return redirect()->route('inventories.index')->with('success', 'Equipment updated.');
     }
 
-    return redirect()->route('inventories.index')->with('success', 'Equipment updated.');
-}
-    
     public function destroy(Inventory $inventory)
     {
         $this->guardOwner($inventory);
 
         if ($inventory->image_path) {
-            Storage::disk('public')->delete($inventory->image_path);
+            $this->deletePublicFile($inventory->image_path);
         }
 
         $inventory->delete();
@@ -249,7 +295,7 @@ class InventoryController extends Controller
     public function import(Request $request)
     {
         $request->validate([
-            'csv' => ['required','file','mimes:csv,txt','max:2048'],
+            'csv' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
         ]);
 
         $file = $request->file('csv');
@@ -261,11 +307,11 @@ class InventoryController extends Controller
 
         // header wajib: equipment_name,category,quantity,price,status
         $header = array_map(fn($h) => strtolower(trim($h)), $rows[0]);
-        $required = ['equipment_name','category','quantity','price','status'];
+        $required = ['equipment_name', 'category', 'quantity', 'price', 'status'];
 
         foreach ($required as $col) {
             if (!in_array($col, $header, true)) {
-                return back()->withErrors(['csv' => "Header CSV harus mengandung kolom: ".implode(', ', $required)]);
+                return back()->withErrors(['csv' => "Header CSV harus mengandung kolom: " . implode(', ', $required)]);
             }
         }
 
@@ -275,16 +321,26 @@ class InventoryController extends Controller
         $skipped  = 0;
 
         foreach (array_slice($rows, 1) as $r) {
-            if (count($r) < count($header)) { $skipped++; continue; }
+            if (count($r) < count($header)) {
+                $skipped++;
+                continue;
+            }
 
             $equipment = trim($r[$map['equipment_name']] ?? '');
             $category  = trim($r[$map['category']] ?? '');
-            $quantity  = (int)($r[$map['quantity']] ?? 0);
-            $price     = (int)($r[$map['price']] ?? 0);
+            $quantity  = (int) ($r[$map['quantity']] ?? 0);
+            $price     = (int) ($r[$map['price']] ?? 0);
             $statusRaw = trim($r[$map['status']] ?? 'active');
 
-            if ($equipment === '' || $category === '') { $skipped++; continue; }
-            if ($quantity < 0 || $price < 0) { $skipped++; continue; }
+            if ($equipment === '' || $category === '') {
+                $skipped++;
+                continue;
+            }
+
+            if ($quantity < 0 || $price < 0) {
+                $skipped++;
+                continue;
+            }
 
             $payload = [
                 'user_id'        => auth()->id(),

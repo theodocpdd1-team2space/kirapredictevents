@@ -38,23 +38,25 @@
 <div class="max-w-6xl mx-auto space-y-6">
 
   <div>
-    <h1 class="text-4xl font-semibold tracking-tight text-white">Revise Estimation</h1>
-    <p class="text-slate-400 mt-2">
+    <h1 class="text-4xl font-semibold tracking-tight text-slate-900 dark:text-white">Revise Estimation</h1>
+    <p class="text-slate-600 dark:text-slate-400 mt-2">
       Edit quantity, unit price, ganti equipment langsung, tambah custom/sewa, dan simpan revision note.
-      <span class="ml-2 text-xs text-slate-500">
+      <span class="ml-2 text-xs text-slate-500 dark:text-slate-500">
         Multiplier: {{ $eventDays }} day × block {{ $durationBlock }} = <b>{{ $mult }}</b>
       </span>
     </p>
   </div>
 
   @if(session('success'))
-    <div class="rounded-xl border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-200">
+    <div class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800
+                dark:border-green-500/20 dark:bg-green-500/10 dark:text-green-200">
       {{ session('success') }}
     </div>
   @endif
 
   @if($errors->any())
-    <div class="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+    <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800
+                dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200">
       {{ $errors->first() }}
     </div>
   @endif
@@ -66,47 +68,54 @@
     {{-- Hidden bucket for removed rows (still submitted to backend) --}}
     <div id="removedBucket" class="hidden"></div>
 
-    {{-- Revision note --}}
-    <div class="rounded-2xl border border-slate-700/60 bg-slate-900/40 overflow-hidden">
-      <div class="px-6 py-5 border-b border-slate-700/60">
-        <div class="text-sm font-bold text-white">Revision Note</div>
-      </div>
-      <div class="p-6">
-        <textarea name="revision_note" rows="4"
-          class="w-full rounded-xl border border-slate-700 bg-slate-950/40 px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-          placeholder="Tulis alasan perubahan (misal: tambah monitor, ganti mixer, sewa genset...)">{{ old('revision_note', $estimation->revision_note) }}</textarea>
-      </div>
-    </div>
-
     <datalist id="invList">
       @foreach($inventories as $inv)
         <option value="{{ $inv->equipment_name }}"></option>
       @endforeach
     </datalist>
 
+    {{-- Revision note --}}
+    <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden
+                dark:border-slate-700/60 dark:bg-slate-900/40">
+      <div class="px-6 py-5 border-b border-slate-200
+                  dark:border-slate-700/60">
+        <div class="text-sm font-bold text-slate-900 dark:text-white">Revision Note</div>
+      </div>
+      <div class="p-6">
+        <textarea name="revision_note" rows="4"
+          class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400
+                 focus:outline-none focus:ring-2 focus:ring-blue-500/30
+                 dark:border-slate-700 dark:bg-slate-950/40 dark:text-white dark:placeholder-slate-500 dark:focus:ring-blue-500/40"
+          placeholder="Tulis alasan perubahan (misal: tambah monitor, ganti mixer, sewa genset...)">{{ old('revision_note', $estimation->revision_note) }}</textarea>
+      </div>
+    </div>
+
     {{-- Existing items --}}
-    <div class="rounded-2xl border border-slate-700/60 bg-slate-900/40 overflow-hidden">
-      <div class="px-6 py-5 border-b border-slate-700/60 flex items-center justify-between">
-        <div class="text-sm font-bold text-white">Equipment</div>
-        <div class="text-xs text-slate-400">Action: Remove / Ganti item langsung (qty=0 auto-remove)</div>
+    <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden
+                dark:border-slate-700/60 dark:bg-slate-900/40">
+      <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between
+                  dark:border-slate-700/60">
+        <div class="text-sm font-bold text-slate-900 dark:text-white">Equipment</div>
+        <div class="text-xs text-slate-500 dark:text-slate-400">Action: Remove / Ganti item langsung (qty=0 auto-remove)</div>
       </div>
 
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
-          <thead class="bg-slate-950/40 border-b border-slate-700/60">
+          <thead class="bg-slate-50 border-b border-slate-200
+                        dark:bg-slate-950/40 dark:border-slate-700/60">
             <tr>
-              <th class="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase">Equipment</th>
-              <th class="px-3 py-4 text-left text-xs font-semibold text-slate-400 uppercase">Unit</th>
-              <th class="px-3 py-4 text-right text-xs font-semibold text-slate-400 uppercase">Qty</th>
-              <th class="px-3 py-4 text-right text-xs font-semibold text-slate-400 uppercase">Unit Price</th>
-              <th class="px-3 py-4 text-right text-xs font-semibold text-slate-400 uppercase">Available</th>
-              <th class="px-3 py-4 text-right text-xs font-semibold text-slate-400 uppercase">Shortage</th>
-              <th class="px-6 py-4 text-right text-xs font-semibold text-slate-400 uppercase">Line Total</th>
-              <th class="px-6 py-4 text-right text-xs font-semibold text-slate-400 uppercase">Action</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Equipment</th>
+              <th class="px-3 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Unit</th>
+              <th class="px-3 py-4 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Qty</th>
+              <th class="px-3 py-4 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Unit Price</th>
+              <th class="px-3 py-4 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Available</th>
+              <th class="px-3 py-4 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Shortage</th>
+              <th class="px-6 py-4 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Line Total</th>
+              <th class="px-6 py-4 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Action</th>
             </tr>
           </thead>
 
-          <tbody class="divide-y divide-slate-800" id="existingTbody">
+          <tbody class="divide-y divide-slate-200 dark:divide-slate-800" id="existingTbody">
             @foreach($estimation->details as $d)
               @php
                 $idx = $loop->index;
@@ -117,7 +126,7 @@
                 $short = (int)($d->shortage ?? max(0, (int)$d->quantity - $avail));
               @endphp
 
-              <tr class="hover:bg-white/5" data-existing-row data-idx="{{ $idx }}">
+              <tr class="hover:bg-slate-50 dark:hover:bg-white/5" data-existing-row data-idx="{{ $idx }}">
                 <td class="px-6 py-5">
                   <div class="flex items-center gap-2">
                     <input type="hidden" name="items[{{ $idx }}][id]" value="{{ $d->id }}" data-id>
@@ -126,20 +135,26 @@
                       name="items[{{ $idx }}][equipment_name]"
                       list="invList"
                       value="{{ old("items.$idx.equipment_name", $d->equipment_name) }}"
-                      class="h-10 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white placeholder-slate-500 focus:outline-none"
+                      class="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none
+                             dark:border-slate-700 dark:bg-slate-950/40 dark:text-white dark:placeholder-slate-500"
                       placeholder="Pilih dari inventory / ketik bebas (custom)"
                       data-eq
                     >
 
                     @if($isCustom)
-                      <span class="shrink-0 rounded-full px-2 py-0.5 bg-purple-500/15 text-purple-200 border border-purple-500/20 text-xs font-semibold">custom</span>
+                      <span class="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold
+                                   bg-purple-50 text-purple-700 border border-purple-200
+                                   dark:bg-purple-500/15 dark:text-purple-200 dark:border-purple-500/20">
+                        custom
+                      </span>
                     @endif
                   </div>
 
                   <div class="mt-2">
-                    <label class="text-xs font-semibold text-slate-400 uppercase">Notes (optional)</label>
+                    <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Notes (optional)</label>
                     <input name="items[{{ $idx }}][notes]" value="{{ old("items.$idx.notes", $d->notes) }}"
-                      class="mt-2 w-full h-10 rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white placeholder-slate-500 focus:outline-none"
+                      class="mt-2 w-full h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none
+                             dark:border-slate-700 dark:bg-slate-950/40 dark:text-white dark:placeholder-slate-500"
                       placeholder="contoh: sewa partner, butuh kabel extra, rider artist..."
                       data-notes
                     >
@@ -148,7 +163,8 @@
 
                 <td class="px-3 py-5">
                   <select name="items[{{ $idx }}][unit]"
-                    class="h-10 rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white focus:outline-none"
+                    class="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:outline-none
+                           dark:border-slate-700 dark:bg-slate-950/40 dark:text-white"
                     data-unit
                   >
                     @foreach($units as $u)
@@ -160,40 +176,48 @@
                 <td class="px-3 py-5 text-right">
                   <input name="items[{{ $idx }}][quantity]" type="number" min="0"
                     value="{{ old("items.$idx.quantity", (int)$d->quantity) }}"
-                    class="h-10 w-24 text-right rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white focus:outline-none"
+                    class="h-10 w-24 text-right rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:outline-none
+                           dark:border-slate-700 dark:bg-slate-950/40 dark:text-white"
                     data-qty
                   >
-                  <div class="text-[11px] text-slate-500 mt-1">0 = remove</div>
+                  <div class="text-[11px] text-slate-500 dark:text-slate-500 mt-1">0 = remove</div>
                 </td>
 
                 <td class="px-3 py-5 text-right">
                   <input name="items[{{ $idx }}][price]" type="number" min="0"
                     value="{{ old("items.$idx.price", (int)$d->price) }}"
-                    class="h-10 w-36 text-right rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white focus:outline-none"
+                    class="h-10 w-36 text-right rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:outline-none
+                           dark:border-slate-700 dark:bg-slate-950/40 dark:text-white"
                     data-price
                   >
-                  <div class="text-[11px] text-slate-500 mt-1">editable</div>
+                  <div class="text-[11px] text-slate-500 dark:text-slate-500 mt-1">editable</div>
                 </td>
 
-                <td class="px-3 py-5 text-right text-slate-200 font-semibold" data-avail>
+                <td class="px-3 py-5 text-right font-semibold text-slate-700 dark:text-slate-200" data-avail>
                   {{ $avail }}
                 </td>
 
                 <td class="px-3 py-5 text-right" data-shortage>
                   @if($short > 0)
-                    <span class="inline-flex rounded-full bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-300 border border-red-500/20">{{ $short }}</span>
+                    <span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold
+                                 bg-red-50 text-red-700 border border-red-200
+                                 dark:bg-red-500/10 dark:text-red-300 dark:border-red-500/20">
+                      {{ $short }}
+                    </span>
                   @else
-                    <span class="text-slate-400">0</span>
+                    <span class="text-slate-500 dark:text-slate-400">0</span>
                   @endif
                 </td>
 
-                <td class="px-6 py-5 text-right font-semibold text-white" data-line-total>
+                <td class="px-6 py-5 text-right font-semibold text-slate-900 dark:text-white" data-line-total>
                   Rp {{ number_format((int)$d->total,0,',','.') }}
                 </td>
 
                 <td class="px-6 py-5 text-right">
                   <button type="button"
-                    class="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 hover:bg-red-500/20"
+                    class="rounded-xl border px-3 py-2 text-xs font-semibold
+                           border-red-200 bg-red-50 text-red-700 hover:bg-red-100
+                           dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200 dark:hover:bg-red-500/20"
                     data-remove
                   >
                     Remove
@@ -207,14 +231,16 @@
     </div>
 
     {{-- Add from inventory --}}
-    <div class="rounded-2xl border border-slate-700/60 bg-slate-900/40 overflow-hidden">
-      <div class="px-6 py-5 border-b border-slate-700/60">
-        <div class="text-sm font-bold text-white">Add Equipment (from Inventory)</div>
-        <div class="text-xs text-slate-400 mt-1">Ketik nama item → pilih suggestion supaya match inventory (auto price).</div>
+    <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden
+                dark:border-slate-700/60 dark:bg-slate-900/40">
+      <div class="px-6 py-5 border-b border-slate-200
+                  dark:border-slate-700/60">
+        <div class="text-sm font-bold text-slate-900 dark:text-white">Add Equipment (from Inventory)</div>
+        <div class="text-xs text-slate-600 dark:text-slate-400 mt-1">Ketik nama item → pilih suggestion supaya match inventory (auto price).</div>
       </div>
 
       <div class="p-6 space-y-3" id="newItemsWrap">
-        <div class="grid grid-cols-12 gap-2 text-xs text-slate-400 uppercase font-semibold">
+        <div class="grid grid-cols-12 gap-2 text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold">
           <div class="col-span-6">Equipment</div>
           <div class="col-span-2">Unit</div>
           <div class="col-span-2 text-right">Qty</div>
@@ -225,23 +251,28 @@
         <div class="grid grid-cols-12 gap-2 items-center" data-new-row>
           <div class="col-span-6">
             <input name="new_items[0][equipment_name]" list="invList"
-              class="h-10 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white placeholder-slate-500 focus:outline-none"
+              class="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none
+                     dark:border-slate-700 dark:bg-slate-950/40 dark:text-white dark:placeholder-slate-500"
               placeholder="Pilih dari inventory (autocomplete)"
               data-new-eq
             >
           </div>
           <div class="col-span-2">
-            <select name="new_items[0][unit]" class="h-10 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white focus:outline-none">
+            <select name="new_items[0][unit]"
+              class="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:outline-none
+                     dark:border-slate-700 dark:bg-slate-950/40 dark:text-white">
               @foreach($units as $u)<option value="{{ $u }}">{{ $u }}</option>@endforeach
             </select>
           </div>
           <div class="col-span-2">
             <input name="new_items[0][quantity]" type="number" min="1" value="1"
-              class="h-10 w-full text-right rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white focus:outline-none">
+              class="h-10 w-full text-right rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:outline-none
+                     dark:border-slate-700 dark:bg-slate-950/40 dark:text-white">
           </div>
           <div class="col-span-2">
             <input name="new_items[0][price]" type="number" min="0"
-              class="h-10 w-full text-right rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white placeholder-slate-500 focus:outline-none"
+              class="h-10 w-full text-right rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none
+                     dark:border-slate-700 dark:bg-slate-950/40 dark:text-white dark:placeholder-slate-500"
               placeholder="(auto)"
               data-new-price
             >
@@ -249,17 +280,19 @@
 
           <div class="col-span-11">
             <input name="new_items[0][notes]"
-              class="h-10 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white placeholder-slate-500 focus:outline-none"
+              class="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none
+                     dark:border-slate-700 dark:bg-slate-950/40 dark:text-white dark:placeholder-slate-500"
               placeholder="notes (optional)">
           </div>
           <div class="col-span-1 flex justify-end">
-            <button type="button" class="text-slate-400 hover:text-red-300" data-remove-new title="Remove">✕</button>
+            <button type="button" class="text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-300" data-remove-new title="Remove">✕</button>
           </div>
         </div>
 
         <div class="flex justify-end">
           <button type="button" id="addNewItemBtn"
-            class="rounded-xl border border-slate-700 bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10">
+            class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-100
+                   dark:border-slate-700 dark:bg-white/5 dark:text-white dark:hover:bg-white/10">
             + Add Row
           </button>
         </div>
@@ -267,14 +300,16 @@
     </div>
 
     {{-- Add custom/sewa --}}
-    <div class="rounded-2xl border border-slate-700/60 bg-slate-900/40 overflow-hidden">
-      <div class="px-6 py-5 border-b border-slate-700/60">
-        <div class="text-sm font-bold text-white">Add Custom / Sewa (Free Text)</div>
-        <div class="text-xs text-slate-400 mt-1">Dipakai untuk item yang tidak ada di inventory (partner rental, transport, dll).</div>
+    <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden
+                dark:border-slate-700/60 dark:bg-slate-900/40">
+      <div class="px-6 py-5 border-b border-slate-200
+                  dark:border-slate-700/60">
+        <div class="text-sm font-bold text-slate-900 dark:text-white">Add Custom / Sewa (Free Text)</div>
+        <div class="text-xs text-slate-600 dark:text-slate-400 mt-1">Dipakai untuk item yang tidak ada di inventory (partner rental, transport, dll).</div>
       </div>
 
       <div class="p-6 space-y-3" id="customItemsWrap">
-        <div class="grid grid-cols-12 gap-2 text-xs text-slate-400 uppercase font-semibold">
+        <div class="grid grid-cols-12 gap-2 text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold">
           <div class="col-span-6">Name</div>
           <div class="col-span-2">Unit</div>
           <div class="col-span-2 text-right">Qty</div>
@@ -285,36 +320,43 @@
         <div class="grid grid-cols-12 gap-2 items-center" data-custom-row>
           <div class="col-span-6">
             <input name="custom_items[0][name]"
-              class="h-10 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white placeholder-slate-500 focus:outline-none"
+              class="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none
+                     dark:border-slate-700 dark:bg-slate-950/40 dark:text-white dark:placeholder-slate-500"
               placeholder="contoh: Sewa Truk / Sewa Monitor / Sewa Genset 20 KVA">
           </div>
           <div class="col-span-2">
-            <select name="custom_items[0][unit]" class="h-10 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white focus:outline-none">
+            <select name="custom_items[0][unit]"
+              class="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:outline-none
+                     dark:border-slate-700 dark:bg-slate-950/40 dark:text-white">
               @foreach($units as $u)<option value="{{ $u }}">{{ $u }}</option>@endforeach
             </select>
           </div>
           <div class="col-span-2">
             <input name="custom_items[0][quantity]" type="number" min="1" value="1"
-              class="h-10 w-full text-right rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white focus:outline-none">
+              class="h-10 w-full text-right rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:outline-none
+                     dark:border-slate-700 dark:bg-slate-950/40 dark:text-white">
           </div>
           <div class="col-span-2">
             <input name="custom_items[0][price]" type="number" min="0" value="0"
-              class="h-10 w-full text-right rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white focus:outline-none">
+              class="h-10 w-full text-right rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:outline-none
+                     dark:border-slate-700 dark:bg-slate-950/40 dark:text-white">
           </div>
 
           <div class="col-span-11">
             <input name="custom_items[0][notes]"
-              class="h-10 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white placeholder-slate-500 focus:outline-none"
+              class="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none
+                     dark:border-slate-700 dark:bg-slate-950/40 dark:text-white dark:placeholder-slate-500"
               placeholder="notes (optional)">
           </div>
           <div class="col-span-1 flex justify-end">
-            <button type="button" class="text-slate-400 hover:text-red-300" data-remove-custom title="Remove">✕</button>
+            <button type="button" class="text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-300" data-remove-custom title="Remove">✕</button>
           </div>
         </div>
 
         <div class="flex justify-end">
           <button type="button" id="addCustomItemBtn"
-            class="rounded-xl border border-slate-700 bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10">
+            class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-100
+                   dark:border-slate-700 dark:bg-white/5 dark:text-white dark:hover:bg-white/10">
             + Add Row
           </button>
         </div>
@@ -322,40 +364,45 @@
     </div>
 
     {{-- Live summary --}}
-    <div class="rounded-2xl border border-slate-700/60 bg-slate-900/40 overflow-hidden">
-      <div class="px-6 py-5 border-b border-slate-700/60 flex items-center justify-between">
-        <div class="text-sm font-bold text-white">Live Total (After Revision)</div>
-        <div class="text-xs text-slate-400">Auto update saat qty/price berubah</div>
+    <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden
+                dark:border-slate-700/60 dark:bg-slate-900/40">
+      <div class="px-6 py-5 border-b border-slate-200 flex items-center justify-between
+                  dark:border-slate-700/60">
+        <div class="text-sm font-bold text-slate-900 dark:text-white">Live Total (After Revision)</div>
+        <div class="text-xs text-slate-600 dark:text-slate-400">Auto update saat qty/price berubah</div>
       </div>
 
       <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="rounded-xl border border-slate-700/60 bg-slate-950/30 p-4">
-          <div class="text-xs font-semibold text-slate-400 uppercase">Equipment Subtotal</div>
-          <div class="mt-2 text-2xl font-bold text-white" id="sumEquipment">Rp 0</div>
-          <div class="mt-2 text-xs text-slate-400">formula: Σ(qty × price × {{ $mult }})</div>
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4
+                    dark:border-slate-700/60 dark:bg-slate-950/30">
+          <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Equipment Subtotal</div>
+          <div class="mt-2 text-2xl font-bold text-slate-900 dark:text-white" id="sumEquipment">Rp 0</div>
+          <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">formula: Σ(qty × price × {{ $mult }})</div>
         </div>
 
-        <div class="rounded-xl border border-slate-700/60 bg-slate-950/30 p-4 space-y-2">
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2
+                    dark:border-slate-700/60 dark:bg-slate-950/30">
           <div class="flex items-center justify-between text-sm">
-            <span class="text-slate-300">Labor</span>
-            <span class="text-white font-semibold" id="sumLabor">Rp {{ number_format($labor,0,',','.') }}</span>
+            <span class="text-slate-700 dark:text-slate-300">Labor</span>
+            <span class="text-slate-900 dark:text-white font-semibold" id="sumLabor">Rp {{ number_format($labor,0,',','.') }}</span>
           </div>
           <div class="flex items-center justify-between text-sm">
-            <span class="text-slate-300">Transport</span>
-            <span class="text-white font-semibold" id="sumTransport">Rp {{ number_format($transport,0,',','.') }}</span>
+            <span class="text-slate-700 dark:text-slate-300">Transport</span>
+            <span class="text-slate-900 dark:text-white font-semibold" id="sumTransport">Rp {{ number_format($transport,0,',','.') }}</span>
           </div>
           <div class="flex items-center justify-between text-sm">
-            <span class="text-slate-300">Operational ({{ $opPercent }}%)</span>
-            <span class="text-white font-semibold" id="sumOperational">Rp 0</span>
+            <span class="text-slate-700 dark:text-slate-300">Operational ({{ $opPercent }}%)</span>
+            <span class="text-slate-900 dark:text-white font-semibold" id="sumOperational">Rp 0</span>
           </div>
           <div class="flex items-center justify-between text-sm">
-            <span class="text-slate-300">Markup ({{ $markupPercent }}%)</span>
-            <span class="text-white font-semibold" id="sumMarkup">Rp 0</span>
+            <span class="text-slate-700 dark:text-slate-300">Markup ({{ $markupPercent }}%)</span>
+            <span class="text-slate-900 dark:text-white font-semibold" id="sumMarkup">Rp 0</span>
           </div>
 
-          <div class="pt-2 mt-2 border-t border-slate-700/60 flex items-center justify-between">
-            <span class="text-white font-bold">Grand Total</span>
-            <span class="text-white font-bold text-lg" id="sumGrand">Rp 0</span>
+          <div class="pt-2 mt-2 border-t border-slate-200 flex items-center justify-between
+                      dark:border-slate-700/60">
+            <span class="text-slate-900 dark:text-white font-bold">Grand Total</span>
+            <span class="text-slate-900 dark:text-white font-bold text-lg" id="sumGrand">Rp 0</span>
           </div>
         </div>
       </div>
@@ -363,7 +410,8 @@
 
     <div class="flex justify-end gap-2">
       <a href="{{ route('estimations.show', $estimation->id) }}"
-        class="h-11 inline-flex items-center rounded-xl border border-slate-700 bg-white/5 px-5 text-sm font-semibold text-white hover:bg-white/10">
+        class="h-11 inline-flex items-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-900 hover:bg-slate-50
+               dark:border-slate-700 dark:bg-white/5 dark:text-white dark:hover:bg-white/10">
         Cancel
       </a>
 
@@ -426,7 +474,6 @@
       const q = toInt(qty?.value);
       const p = toInt(pr?.value);
 
-      // available only if match inventory
       let avail = 0;
       if (invMap[name]) avail = toInt(invMap[name].qty);
       if (availEl) availEl.textContent = String(avail);
@@ -434,8 +481,8 @@
       const shortage = Math.max(0, q - avail);
       if (shortEl) {
         shortEl.innerHTML = shortage > 0
-          ? `<span class="inline-flex rounded-full bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-300 border border-red-500/20">${shortage}</span>`
-          : `<span class="text-slate-400">0</span>`;
+          ? `<span class="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-red-50 text-red-700 border border-red-200 dark:bg-red-500/10 dark:text-red-300 dark:border-red-500/20">${shortage}</span>`
+          : `<span class="text-slate-500 dark:text-slate-400">0</span>`;
       }
 
       if (q === 0) {
@@ -535,7 +582,6 @@
     }
   });
 
-  // ✅ realtime qty=0 langsung remove (tanpa blur)
   document.addEventListener('input', (e) => {
     const qty = e.target.closest('[data-qty]');
     if (qty) {
@@ -564,7 +610,6 @@
   document.addEventListener('change', refreshTotals);
   document.addEventListener('keyup', refreshTotals);
 
-  // add rows
   function makeRow(prefix, idx, isInventory) {
     const wrap = document.createElement('div');
     wrap.className = 'grid grid-cols-12 gap-2 items-center';
@@ -572,64 +617,61 @@
 
     const unitOptions = @json($units).map(u => `<option value="${u}">${u}</option>`).join('');
 
+    const baseInput = `h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none
+                       dark:border-slate-700 dark:bg-slate-950/40 dark:text-white dark:placeholder-slate-500`;
+
+    const baseSelect = `h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:outline-none
+                        dark:border-slate-700 dark:bg-slate-950/40 dark:text-white`;
+
+    const removeBtn = `text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-300`;
+
     if (isInventory) {
       wrap.innerHTML = `
         <div class="col-span-6">
-          <input name="${prefix}[${idx}][equipment_name]" list="invList"
-            class="h-10 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white placeholder-slate-500 focus:outline-none"
-            placeholder="Pilih dari inventory (autocomplete)"
-            data-new-eq>
+          <input name="${prefix}[${idx}][equipment_name]" list="invList" class="${baseInput}"
+            placeholder="Pilih dari inventory (autocomplete)" data-new-eq>
         </div>
         <div class="col-span-2">
-          <select name="${prefix}[${idx}][unit]" class="h-10 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white focus:outline-none">
-            ${unitOptions}
-          </select>
+          <select name="${prefix}[${idx}][unit]" class="${baseSelect}">${unitOptions}</select>
         </div>
         <div class="col-span-2">
           <input name="${prefix}[${idx}][quantity]" type="number" min="1" value="1"
-            class="h-10 w-full text-right rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white focus:outline-none">
+            class="h-10 w-full text-right rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:outline-none
+                   dark:border-slate-700 dark:bg-slate-950/40 dark:text-white">
         </div>
         <div class="col-span-2">
-          <input name="${prefix}[${idx}][price]" type="number" min="0"
-            class="h-10 w-full text-right rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white placeholder-slate-500 focus:outline-none"
-            placeholder="(auto)" data-new-price>
+          <input name="${prefix}[${idx}][price]" type="number" min="0" class="${baseInput}" placeholder="(auto)" data-new-price>
         </div>
         <div class="col-span-11">
-          <input name="${prefix}[${idx}][notes]"
-            class="h-10 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white placeholder-slate-500 focus:outline-none"
-            placeholder="notes (optional)">
+          <input name="${prefix}[${idx}][notes]" class="${baseInput}" placeholder="notes (optional)">
         </div>
         <div class="col-span-1 flex justify-end">
-          <button type="button" class="text-slate-400 hover:text-red-300" data-remove-new title="Remove">✕</button>
+          <button type="button" class="${removeBtn}" data-remove-new title="Remove">✕</button>
         </div>
       `;
     } else {
       wrap.innerHTML = `
         <div class="col-span-6">
-          <input name="${prefix}[${idx}][name]"
-            class="h-10 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white placeholder-slate-500 focus:outline-none"
-            placeholder="Nama item (free text)">
+          <input name="${prefix}[${idx}][name]" class="${baseInput}" placeholder="Nama item (free text)">
         </div>
         <div class="col-span-2">
-          <select name="${prefix}[${idx}][unit]" class="h-10 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white focus:outline-none">
-            ${unitOptions}
-          </select>
+          <select name="${prefix}[${idx}][unit]" class="${baseSelect}">${unitOptions}</select>
         </div>
         <div class="col-span-2">
           <input name="${prefix}[${idx}][quantity]" type="number" min="1" value="1"
-            class="h-10 w-full text-right rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white focus:outline-none">
+            class="h-10 w-full text-right rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:outline-none
+                   dark:border-slate-700 dark:bg-slate-950/40 dark:text-white">
         </div>
         <div class="col-span-2">
           <input name="${prefix}[${idx}][price]" type="number" min="0" value="0"
-            class="h-10 w-full text-right rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white focus:outline-none">
+            class="h-10 w-full text-right rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:outline-none
+                   dark:border-slate-700 dark:bg-slate-950/40 dark:text-white">
         </div>
         <div class="col-span-11">
-          <input name="${prefix}[${idx}][notes]"
-            class="h-10 w-full rounded-xl border border-slate-700 bg-slate-950/40 px-3 text-sm text-white placeholder-slate-500 focus:outline-none"
-            placeholder="notes (optional)">
+          <input name="${prefix}[${idx}][notes]" class="${baseInput}" placeholder="notes (optional)">
         </div>
         <div class="col-span-1 flex justify-end">
-          <button type="button" class="text-slate-400 hover:text-red-300" data-remove-custom title="Remove">✕</button>
+          <button type="button" class="${removeBtn}" data-remove-custom title="Remove">✕</button>
         </div>
       `;
     }
@@ -667,7 +709,7 @@
     });
   }
 
-  // ✅ submit sanitizer: disable empty seed rows so they don't validate
+  // submit sanitizer: disable empty seed rows so they don't validate
   const form = document.getElementById('reviseForm');
   if (form) {
     form.addEventListener('submit', () => {

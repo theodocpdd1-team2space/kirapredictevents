@@ -26,7 +26,6 @@ class InventoryController extends Controller
         return match ($s) {
             'maintenance' => 'maintenance',
             'inactive'    => 'inactive',
-            // legacy mapping:
             'available', 'used', 'active', '' => 'active',
             default      => 'active',
         };
@@ -59,7 +58,6 @@ class InventoryController extends Controller
             'Other',
         ];
 
-        // merge unique, keep order: existing first, then defaults not already included
         $all = $existing;
         foreach ($defaults as $d) {
             if (!in_array($d, $all, true)) {
@@ -71,12 +69,22 @@ class InventoryController extends Controller
     }
 
     /**
-     * Copy a file from storage/app/public to public/storage.
+     * Root folder public_html/storage di shared hosting.
+     */
+    protected function sharedPublicStorageRoot(): string
+    {
+        return dirname(base_path(), 2) . '/public_html/storage';
+    }
+
+    /**
+     * Copy a file from storage/app/public to public_html/storage.
      */
     protected function syncPublicFile(string $relativePath): void
     {
         $source = storage_path('app/public/' . $relativePath);
-        $target = public_path('storage/' . $relativePath);
+
+        $publicRoot = $this->sharedPublicStorageRoot();
+        $target = $publicRoot . '/' . $relativePath;
         $targetDir = dirname($target);
 
         if (!File::exists($targetDir)) {
@@ -89,7 +97,7 @@ class InventoryController extends Controller
     }
 
     /**
-     * Delete file from both storage/app/public and public/storage.
+     * Delete file from both storage/app/public and public_html/storage.
      */
     protected function deletePublicFile(?string $relativePath): void
     {
@@ -99,7 +107,7 @@ class InventoryController extends Controller
 
         Storage::disk('public')->delete($relativePath);
 
-        $publicFile = public_path('storage/' . $relativePath);
+        $publicFile = $this->sharedPublicStorageRoot() . '/' . $relativePath;
         if (File::exists($publicFile)) {
             File::delete($publicFile);
         }
@@ -140,7 +148,6 @@ class InventoryController extends Controller
             ->orderBy('category')
             ->pluck('category');
 
-        // status untuk filter UI (DB enum)
         $statuses = ['active', 'maintenance', 'inactive'];
 
         return view('pages.inventories.index', compact('items', 'categories', 'statuses', 'perPage'));
@@ -158,14 +165,11 @@ class InventoryController extends Controller
     {
         $data = $request->validate([
             'equipment_name'   => ['required', 'string', 'max:120'],
-
             'category_choice'  => ['required', 'string', 'max:80'],
             'category_other'   => ['nullable', 'string', 'max:80'],
-
             'quantity'         => ['required', 'integer', 'min:0'],
             'price'            => ['required', 'numeric', 'min:0'],
             'status'           => ['required', 'in:active,maintenance,inactive'],
-
             'image'            => ['nullable', 'image', 'max:2048'],
         ]);
 
@@ -195,7 +199,6 @@ class InventoryController extends Controller
         try {
             Inventory::create($payload);
         } catch (QueryException $e) {
-            // 1062 = duplicate key MySQL
             if ((int) ($e->errorInfo[1] ?? 0) === 1062) {
                 return back()
                     ->withInput()
@@ -223,14 +226,11 @@ class InventoryController extends Controller
 
         $data = $request->validate([
             'equipment_name'   => ['required', 'string', 'max:120'],
-
             'category_choice'  => ['required', 'string', 'max:80'],
             'category_other'   => ['nullable', 'string', 'max:80'],
-
             'quantity'         => ['required', 'integer', 'min:0'],
             'price'            => ['required', 'numeric', 'min:0'],
             'status'           => ['required', 'in:active,maintenance,inactive'],
-
             'image'            => ['nullable', 'image', 'max:2048'],
         ]);
 
@@ -305,7 +305,6 @@ class InventoryController extends Controller
             return back()->withErrors(['csv' => 'CSV kosong atau tidak valid.']);
         }
 
-        // header wajib: equipment_name,category,quantity,price,status
         $header = array_map(fn($h) => strtolower(trim($h)), $rows[0]);
         $required = ['equipment_name', 'category', 'quantity', 'price', 'status'];
 
@@ -351,7 +350,6 @@ class InventoryController extends Controller
                 'status'         => $this->normalizeStatus($statusRaw),
             ];
 
-            // upsert per user + equipment_name
             Inventory::updateOrCreate(
                 ['user_id' => auth()->id(), 'equipment_name' => $equipment],
                 $payload

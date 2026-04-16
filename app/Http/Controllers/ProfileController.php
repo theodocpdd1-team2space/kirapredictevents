@@ -47,24 +47,19 @@ class ProfileController extends Controller
         }
 
         if ($request->hasFile('photo')) {
-            // hapus file lama jika ada
             if ($user->profile_photo_path) {
                 $this->deletePublicFile($user->profile_photo_path);
             }
 
-            // simpan ke storage/app/public/profile-photos
             $path = $request->file('photo')->store('profile-photos', 'public');
 
-            // sinkron ke public/storage supaya kebaca di shared hosting
             $this->syncPublicFile($path);
 
-            // simpan path relatif ke database
             $user->profile_photo_path = $path;
         }
 
         $user->save();
 
-        // supaya topbar langsung update
         $user->refresh();
         auth()->setUser($user);
 
@@ -84,7 +79,6 @@ class ProfileController extends Controller
 
         Auth::logout();
 
-        // delete profile photo file
         if ($user->profile_photo_path) {
             $this->deletePublicFile($user->profile_photo_path);
         }
@@ -98,12 +92,22 @@ class ProfileController extends Controller
     }
 
     /**
-     * Copy a file from storage/app/public to public/storage.
+     * Root folder public_html/storage di shared hosting.
+     */
+    protected function sharedPublicStorageRoot(): string
+    {
+        return dirname(base_path(), 2) . '/public_html/storage';
+    }
+
+    /**
+     * Copy a file from storage/app/public to public_html/storage.
      */
     protected function syncPublicFile(string $relativePath): void
     {
         $source = storage_path('app/public/' . $relativePath);
-        $target = public_path('storage/' . $relativePath);
+
+        $publicRoot = $this->sharedPublicStorageRoot();
+        $target = $publicRoot . '/' . $relativePath;
         $targetDir = dirname($target);
 
         if (! File::exists($targetDir)) {
@@ -116,7 +120,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * Delete file from both storage/app/public and public/storage.
+     * Delete file from both storage/app/public and public_html/storage.
      */
     protected function deletePublicFile(?string $relativePath): void
     {
@@ -126,7 +130,7 @@ class ProfileController extends Controller
 
         Storage::disk('public')->delete($relativePath);
 
-        $publicFile = public_path('storage/' . $relativePath);
+        $publicFile = $this->sharedPublicStorageRoot() . '/' . $relativePath;
         if (File::exists($publicFile)) {
             File::delete($publicFile);
         }

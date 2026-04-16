@@ -13,7 +13,7 @@ class BusinessController extends Controller
     public function edit()
     {
         $businessName = Setting::getValue('business_name', 'Event Multimedia DSS');
-        $businessLogo = Setting::getValue('business_logo', 'images/logo-kira.png'); // path relatif public/
+        $businessLogo = Setting::getValue('business_logo', 'images/logo-kira.png');
 
         return view('pages.settings.business.edit', compact('businessName', 'businessLogo'));
     }
@@ -28,7 +28,6 @@ class BusinessController extends Controller
         Setting::setValue('business_name', $data['business_name']);
 
         if ($request->hasFile('logo')) {
-            // hapus logo lama kalau sebelumnya dari storage/
             $old = Setting::getValue('business_logo');
 
             if ($old && str_starts_with($old, 'storage/')) {
@@ -36,13 +35,10 @@ class BusinessController extends Controller
                 $this->deletePublicFile($oldRelativePath);
             }
 
-            // simpan ke storage/app/public/settings
             $path = $request->file('logo')->store('settings', 'public');
 
-            // sinkron ke public/storage supaya kebaca di shared hosting
             $this->syncPublicFile($path);
 
-            // simpan path untuk dipanggil dengan asset()
             Setting::setValue('business_logo', 'storage/' . $path);
         }
 
@@ -50,12 +46,22 @@ class BusinessController extends Controller
     }
 
     /**
-     * Copy a file from storage/app/public to public/storage.
+     * Root folder public_html/storage di shared hosting.
+     */
+    protected function sharedPublicStorageRoot(): string
+    {
+        return dirname(base_path(), 2) . '/public_html/storage';
+    }
+
+    /**
+     * Copy a file from storage/app/public to public_html/storage.
      */
     protected function syncPublicFile(string $relativePath): void
     {
         $source = storage_path('app/public/' . $relativePath);
-        $target = public_path('storage/' . $relativePath);
+
+        $publicRoot = $this->sharedPublicStorageRoot();
+        $target = $publicRoot . '/' . $relativePath;
         $targetDir = dirname($target);
 
         if (! File::exists($targetDir)) {
@@ -68,7 +74,7 @@ class BusinessController extends Controller
     }
 
     /**
-     * Delete file from both storage/app/public and public/storage.
+     * Delete file from both storage/app/public and public_html/storage.
      */
     protected function deletePublicFile(?string $relativePath): void
     {
@@ -78,7 +84,7 @@ class BusinessController extends Controller
 
         Storage::disk('public')->delete($relativePath);
 
-        $publicFile = public_path('storage/' . $relativePath);
+        $publicFile = $this->sharedPublicStorageRoot() . '/' . $relativePath;
         if (File::exists($publicFile)) {
             File::delete($publicFile);
         }

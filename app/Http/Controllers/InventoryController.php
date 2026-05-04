@@ -3,22 +3,42 @@
 namespace App\Http\Controllers;
 
 use App\Models\Inventory;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Database\QueryException;
 
 class InventoryController extends Controller
 {
-    private function guardOwner(Inventory $inventory): void
+    private function tenantId(): int
     {
-        abort_unless((int) $inventory->user_id === (int) auth()->id(), 403);
+        $tenantId = auth()->user()?->tenant_id;
+
+        abort_unless($tenantId, 403, 'User belum memiliki tenant.');
+
+        return (int) $tenantId;
     }
 
     /**
-     * Status DB kamu cuma 3: active, maintenance, inactive
-     * Tapi import CSV/legacy bisa kirim: available, used, active, inactive, maintenance
+     * Inventory boleh dikelola oleh Owner dan Staff.
+     * Rules/Cost/Business/Staff Management tetap Owner only di controller masing-masing.
      */
+    private function guardInventoryManager(): void
+    {
+        abort_unless(
+            auth()->user()?->isOwner() || auth()->user()?->isStaff(),
+            403,
+            'Akses hanya untuk Owner atau Staff.'
+        );
+
+        abort_unless(auth()->user()?->tenant_id, 403, 'User belum memiliki tenant.');
+    }
+
+    private function guardTenant(Inventory $inventory): void
+    {
+        abort_unless((int) $inventory->tenant_id === $this->tenantId(), 403);
+    }
+
     private function normalizeStatus(?string $status): string
     {
         $s = strtolower(trim((string) $status));
@@ -27,17 +47,14 @@ class InventoryController extends Controller
             'maintenance' => 'maintenance',
             'inactive'    => 'inactive',
             'available', 'used', 'active', '' => 'active',
-            default      => 'active',
+            default       => 'active',
         };
     }
 
-    /**
-     * Category dropdown options (per user + default).
-     */
     private function categoryOptions(): array
     {
         $existing = Inventory::query()
-            ->where('user_id', auth()->id())
+            ->where('tenant_id', $this->tenantId())
             ->select('category')
             ->distinct()
             ->orderBy('category')
@@ -59,6 +76,7 @@ class InventoryController extends Controller
         ];
 
         $all = $existing;
+
         foreach ($defaults as $d) {
             if (!in_array($d, $all, true)) {
                 $all[] = $d;
@@ -68,17 +86,11 @@ class InventoryController extends Controller
         return $all;
     }
 
-    /**
-     * Root folder public_html/storage di shared hosting.
-     */
     protected function sharedPublicStorageRoot(): string
     {
         return dirname(base_path(), 2) . '/public_html/storage';
     }
 
-    /**
-     * Copy a file from storage/app/public to public_html/storage.
-     */
     protected function syncPublicFile(string $relativePath): void
     {
         $source = storage_path('app/public/' . $relativePath);
@@ -96,9 +108,6 @@ class InventoryController extends Controller
         }
     }
 
-    /**
-     * Delete file from both storage/app/public and public_html/storage.
-     */
     protected function deletePublicFile(?string $relativePath): void
     {
         if (!$relativePath) {
@@ -108,15 +117,23 @@ class InventoryController extends Controller
         Storage::disk('public')->delete($relativePath);
 
         $publicFile = $this->sharedPublicStorageRoot() . '/' . $relativePath;
+
         if (File::exists($publicFile)) {
             File::delete($publicFile);
         }
     }
 
+    /**
+     * Owner dan Staff boleh melihat inventory tenant.
+     */
     public function index(Request $request)
     {
+        $this->guardInventoryManager();
+
+        $tenantId = $this->tenantId();
+
         $q = Inventory::query()
-            ->where('user_id', auth()->id())
+            ->where('tenant_id', $tenantId)
             ->latest();
 
         if ($request->filled('status')) {
@@ -142,7 +159,7 @@ class InventoryController extends Controller
         }
 
         $categories = Inventory::query()
-            ->where('user_id', auth()->id())
+            ->where('tenant_id', $tenantId)
             ->select('category')
             ->distinct()
             ->orderBy('category')
@@ -153,16 +170,26 @@ class InventoryController extends Controller
         return view('pages.inventories.index', compact('items', 'categories', 'statuses', 'perPage'));
     }
 
+    /**
+     * Owner dan Staff boleh create inventory.
+     */
     public function create()
     {
+        $this->guardInventoryManager();
+
         $categoryOptions = $this->categoryOptions();
         $statusOptions = ['active', 'maintenance', 'inactive'];
 
         return view('pages.inventories.create', compact('categoryOptions', 'statusOptions'));
     }
 
+    /**
+     * Owner dan Staff boleh store inventory.
+     */
     public function store(Request $request)
     {
+        $this->guardInventoryManager();
+
         $data = $request->validate([
             'equipment_name'   => ['required', 'string', 'max:120'],
             'category_choice'  => ['required', 'string', 'max:80'],
@@ -178,11 +205,14 @@ class InventoryController extends Controller
             : $data['category_choice'];
 
         if ($data['category_choice'] === 'other' && $categoryFinal === '') {
-            return back()->withErrors(['category_other' => 'Category (Other) wajib diisi.'])->withInput();
+            return back()
+                ->withErrors(['category_other' => 'Category (Other) wajib diisi.'])
+                ->withInput();
         }
 
         $payload = [
-            'user_id'        => auth()->id(),
+            'tenant_id'      => $this->tenantId(),
+            'created_by'     => auth()->id(),
             'equipment_name' => trim($data['equipment_name']),
             'category'       => $categoryFinal,
             'quantity'       => (int) $data['quantity'],
@@ -204,15 +234,22 @@ class InventoryController extends Controller
                     ->withInput()
                     ->withErrors(['equipment_name' => 'Peralatan sudah ada. Silakan edit data yang sudah ada atau ganti nama.']);
             }
+
             throw $e;
         }
 
-        return redirect()->route('inventories.index')->with('success', 'Equipment added.');
+        return redirect()
+            ->route('inventories.index')
+            ->with('success', 'Equipment added.');
     }
 
+    /**
+     * Owner dan Staff boleh edit inventory tenant yang sama.
+     */
     public function edit(Inventory $inventory)
     {
-        $this->guardOwner($inventory);
+        $this->guardInventoryManager();
+        $this->guardTenant($inventory);
 
         $categoryOptions = $this->categoryOptions();
         $statusOptions = ['active', 'maintenance', 'inactive'];
@@ -220,9 +257,13 @@ class InventoryController extends Controller
         return view('pages.inventories.edit', compact('inventory', 'categoryOptions', 'statusOptions'));
     }
 
+    /**
+     * Owner dan Staff boleh update inventory tenant yang sama.
+     */
     public function update(Request $request, Inventory $inventory)
     {
-        $this->guardOwner($inventory);
+        $this->guardInventoryManager();
+        $this->guardTenant($inventory);
 
         $data = $request->validate([
             'equipment_name'   => ['required', 'string', 'max:120'],
@@ -239,7 +280,9 @@ class InventoryController extends Controller
             : $data['category_choice'];
 
         if ($data['category_choice'] === 'other' && $categoryFinal === '') {
-            return back()->withErrors(['category_other' => 'Category (Other) wajib diisi.'])->withInput();
+            return back()
+                ->withErrors(['category_other' => 'Category (Other) wajib diisi.'])
+                ->withInput();
         }
 
         $payload = [
@@ -268,15 +311,22 @@ class InventoryController extends Controller
                     ->withInput()
                     ->withErrors(['equipment_name' => 'Peralatan sudah ada. Silakan edit data yang sudah ada atau ganti nama.']);
             }
+
             throw $e;
         }
 
-        return redirect()->route('inventories.index')->with('success', 'Equipment updated.');
+        return redirect()
+            ->route('inventories.index')
+            ->with('success', 'Equipment updated.');
     }
 
+    /**
+     * Owner dan Staff boleh delete inventory tenant yang sama.
+     */
     public function destroy(Inventory $inventory)
     {
-        $this->guardOwner($inventory);
+        $this->guardInventoryManager();
+        $this->guardTenant($inventory);
 
         if ($inventory->image_path) {
             $this->deletePublicFile($inventory->image_path);
@@ -284,16 +334,28 @@ class InventoryController extends Controller
 
         $inventory->delete();
 
-        return redirect()->route('inventories.index')->with('success', 'Equipment deleted.');
+        return redirect()
+            ->route('inventories.index')
+            ->with('success', 'Equipment deleted.');
     }
 
+    /**
+     * Owner dan Staff boleh import inventory.
+     */
     public function importForm()
     {
+        $this->guardInventoryManager();
+
         return view('pages.inventories.import');
     }
 
+    /**
+     * Owner dan Staff boleh import inventory.
+     */
     public function import(Request $request)
     {
+        $this->guardInventoryManager();
+
         $request->validate([
             'csv' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
         ]);
@@ -305,19 +367,23 @@ class InventoryController extends Controller
             return back()->withErrors(['csv' => 'CSV kosong atau tidak valid.']);
         }
 
-        $header = array_map(fn($h) => strtolower(trim($h)), $rows[0]);
+        $header = array_map(fn ($h) => strtolower(trim((string) $h)), $rows[0]);
         $required = ['equipment_name', 'category', 'quantity', 'price', 'status'];
 
         foreach ($required as $col) {
             if (!in_array($col, $header, true)) {
-                return back()->withErrors(['csv' => "Header CSV harus mengandung kolom: " . implode(', ', $required)]);
+                return back()->withErrors([
+                    'csv' => 'Header CSV harus mengandung kolom: ' . implode(', ', $required),
+                ]);
             }
         }
 
         $map = array_flip($header);
 
         $inserted = 0;
-        $skipped  = 0;
+        $skipped = 0;
+        $tenantId = $this->tenantId();
+        $userId = auth()->id();
 
         foreach (array_slice($rows, 1) as $r) {
             if (count($r) < count($header)) {
@@ -326,9 +392,9 @@ class InventoryController extends Controller
             }
 
             $equipment = trim($r[$map['equipment_name']] ?? '');
-            $category  = trim($r[$map['category']] ?? '');
-            $quantity  = (int) ($r[$map['quantity']] ?? 0);
-            $price     = (int) ($r[$map['price']] ?? 0);
+            $category = trim($r[$map['category']] ?? '');
+            $quantity = (int) ($r[$map['quantity']] ?? 0);
+            $price = (int) ($r[$map['price']] ?? 0);
             $statusRaw = trim($r[$map['status']] ?? 'active');
 
             if ($equipment === '' || $category === '') {
@@ -342,7 +408,8 @@ class InventoryController extends Controller
             }
 
             $payload = [
-                'user_id'        => auth()->id(),
+                'tenant_id'      => $tenantId,
+                'created_by'     => $userId,
                 'equipment_name' => $equipment,
                 'category'       => $category,
                 'quantity'       => $quantity,
@@ -351,7 +418,10 @@ class InventoryController extends Controller
             ];
 
             Inventory::updateOrCreate(
-                ['user_id' => auth()->id(), 'equipment_name' => $equipment],
+                [
+                    'tenant_id' => $tenantId,
+                    'equipment_name' => $equipment,
+                ],
                 $payload
             );
 

@@ -3,14 +3,15 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Setting;
+use Illuminate\Http\Request;
 
 class ThemeController extends Controller
 {
     public function edit()
     {
-        $themeMode = Setting::getValue('theme_mode', 'light');
+        $themeMode = Setting::getUserValue('theme_mode', 'light');
+
         return view('pages.settings.theme.edit', compact('themeMode'));
     }
 
@@ -20,7 +21,7 @@ class ThemeController extends Controller
             'theme_mode' => ['required', 'in:light,dark,system'],
         ]);
 
-        Setting::setValue('theme_mode', $data['theme_mode']);
+        Setting::setUserValue('theme_mode', $data['theme_mode']);
 
         return back()->with('success', 'Theme updated.');
     }

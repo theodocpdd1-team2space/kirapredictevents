@@ -11,7 +11,8 @@
   };
 
   // Theme
-  $theme = Setting::getValue('theme_mode', 'light'); // light|dark
+  // Theme - user preference
+  $theme = Setting::getUserValue('theme_mode', 'light'); // light|dark|system
   $themeClass = $theme === 'dark' ? 'dark' : '';
 
   // Business branding

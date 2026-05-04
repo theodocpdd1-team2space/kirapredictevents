@@ -10,11 +10,11 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\EstimationShareController;
 
 use App\Http\Controllers\Settings\RuleController;
-use App\Http\Controllers\Settings\RuleWizardController;
 use App\Http\Controllers\Settings\BusinessController;
 use App\Http\Controllers\Settings\LanguageController;
 use App\Http\Controllers\Settings\ThemeController;
 use App\Http\Controllers\Settings\CostController;
+use App\Http\Controllers\Settings\StaffController;
 
 Route::get('/', function () {
     return auth()->check()
@@ -52,7 +52,7 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/estimations/{estimation}/accuracy', [EstimationController::class, 'updateAccuracy'])->name('estimations.accuracy');
 
     Route::get('/estimations/{estimation}/pdf', [EstimationController::class, 'pdf'])->name('estimations.pdf');
-    Route::get('/estimations/{estimation}/wa',  [EstimationController::class, 'wa'])->name('estimations.wa');
+    Route::get('/estimations/{estimation}/wa', [EstimationController::class, 'wa'])->name('estimations.wa');
 
     Route::post('/estimations/{estimation}/share-token', [EstimationController::class, 'ensureShareToken'])
         ->name('estimations.shareToken');
@@ -65,14 +65,30 @@ Route::middleware(['auth'])->group(function () {
     // Settings
     Route::prefix('settings')->name('settings.')->group(function () {
 
-        Route::get('/', fn () => redirect()->route('settings.rules.index'))->name('home');
+        Route::get('/', function () {
+            return auth()->user()?->isOwner()
+                ? redirect()->route('settings.rules.index')
+                : redirect()->route('settings.language.edit');
+        })->name('home');
+
         Route::get('/about', fn () => view('pages.settings.about'))->name('about');
 
-        // Cost & Rates
+        /**
+         * Staff Management - Owner only
+         * Protection juga nanti tetap kita taruh di StaffController.
+         */
+        Route::get('/staff', [StaffController::class, 'index'])->name('staff.index');
+        Route::get('/staff/create', [StaffController::class, 'create'])->name('staff.create');
+        Route::post('/staff', [StaffController::class, 'store'])->name('staff.store');
+        Route::get('/staff/{user}/edit', [StaffController::class, 'edit'])->name('staff.edit');
+        Route::patch('/staff/{user}', [StaffController::class, 'update'])->name('staff.update');
+        Route::delete('/staff/{user}', [StaffController::class, 'destroy'])->name('staff.destroy');
+
+        // Cost & Rates - Owner only, protected inside controller
         Route::get('/cost', [CostController::class, 'edit'])->name('cost.edit');
         Route::patch('/cost', [CostController::class, 'update'])->name('cost.update');
 
-        // Rules
+        // Rules - Owner only, protected inside controller
         Route::get('/rules', [RuleController::class, 'index'])->name('rules.index');
         Route::get('/rules/create', [RuleController::class, 'create'])->name('rules.create');
         Route::post('/rules', [RuleController::class, 'store'])->name('rules.store');
@@ -86,30 +102,19 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/rules/{rule}/toggle', [RuleController::class, 'toggle'])->name('rules.toggle');
         Route::delete('/rules/{rule}', [RuleController::class, 'destroy'])->name('rules.destroy');
 
-        // ✅ Rule Wizard
-       // Rule Wizard (10 indikator)
-        // Route::get('/rules/wizard', [\App\Http\Controllers\Settings\RuleWizardController::class, 'create'])
-        //     ->name('rules.wizard.create');
-
-        // Route::post('/rules/wizard/preview', [\App\Http\Controllers\Settings\RuleWizardController::class, 'preview'])
-        //     ->name('rules.wizard.preview');
-
-        // Route::post('/rules/wizard/store', [\App\Http\Controllers\Settings\RuleWizardController::class, 'store'])
-        //     ->name('rules.wizard.store');
-
-        // Business
+        // Business - Owner only, protected inside controller
         Route::get('/business', [BusinessController::class, 'edit'])->name('business.edit');
         Route::patch('/business', [BusinessController::class, 'update'])->name('business.update');
 
-        // Language
+        // Language - Owner & Staff
         Route::get('/language', [LanguageController::class, 'edit'])->name('language.edit');
         Route::patch('/language', [LanguageController::class, 'update'])->name('language.update');
 
-        // Theme
+        // Theme - Owner & Staff
         Route::get('/theme', [ThemeController::class, 'edit'])->name('theme.edit');
         Route::patch('/theme', [ThemeController::class, 'update'])->name('theme.update');
 
-        // debug locale
+        // Debug locale
         Route::get('/_locale', fn () => app()->getLocale())->name('locale');
     });
 

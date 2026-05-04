@@ -12,8 +12,28 @@ use Illuminate\Support\Facades\DB;
 
 class EventController extends Controller
 {
+    private function tenantId(): int
+    {
+        $tenantId = auth()->user()?->tenant_id;
+
+        abort_unless($tenantId, 403, 'User belum memiliki tenant.');
+
+        return (int) $tenantId;
+    }
+
+    private function userId(): int
+    {
+        $userId = auth()->id();
+
+        abort_unless($userId, 403, 'User belum login.');
+
+        return (int) $userId;
+    }
+
     public function create()
     {
+        $this->tenantId();
+
         $freeCitiesRaw = (string) Setting::getValue('transport_free_cities', 'surabaya,sidoarjo,gresik');
 
         $freeCities = array_filter(array_map(function ($c) {
@@ -22,9 +42,14 @@ class EventController extends Controller
 
         $cityRatesRaw = Setting::getValue('transport_city_rates', '{}');
         $cityRates = [];
+
         if (is_string($cityRatesRaw)) {
             $decoded = json_decode($cityRatesRaw, true);
-            if (is_array($decoded)) $cityRates = $decoded;
+            if (is_array($decoded)) {
+                $cityRates = $decoded;
+            }
+        } elseif (is_array($cityRatesRaw)) {
+            $cityRates = $cityRatesRaw;
         }
 
         $rateCities = array_keys($cityRates);
@@ -40,6 +65,9 @@ class EventController extends Controller
 
     public function store(Request $request, InferenceEngineService $engine)
     {
+        $userId = $this->userId();
+        $tenantId = $this->tenantId();
+
         $data = $request->validate([
             'event_name' => ['required', 'string', 'max:150'],
 
@@ -54,7 +82,6 @@ class EventController extends Controller
             'location_choice' => ['required', 'string', 'max:80'],
             'location_other' => ['nullable', 'string', 'max:120'],
 
-            // ✅ venue type
             'venue_type' => ['required', 'in:indoor,outdoor'],
 
             'event_days' => ['required', 'integer', 'min:1', 'max:30'],
@@ -68,37 +95,45 @@ class EventController extends Controller
             'crew_stage_qty' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        // Final event_type
         $eventTypeFinal = $data['event_type_choice'] === 'other'
-            ? trim((string)($data['event_type_other'] ?? ''))
+            ? trim((string) ($data['event_type_other'] ?? ''))
             : $data['event_type_choice'];
 
         if ($data['event_type_choice'] === 'other' && $eventTypeFinal === '') {
-            return back()->withErrors(['event_type_other' => 'Tipe acara wajib diisi'])->withInput();
+            return back()
+                ->withErrors(['event_type_other' => 'Tipe acara wajib diisi'])
+                ->withInput();
         }
 
-        // Final location (CITY only)
         $locationChoice = strtolower(trim((string) $data['location_choice']));
+
         $locationFinal = $locationChoice === 'other'
-            ? trim((string)($data['location_other'] ?? ''))
+            ? trim((string) ($data['location_other'] ?? ''))
             : $locationChoice;
 
         if ($locationChoice === 'other' && $locationFinal === '') {
-            return back()->withErrors(['location_other' => 'Lokasi wajib diisi'])->withInput();
+            return back()
+                ->withErrors(['location_other' => 'Lokasi wajib diisi'])
+                ->withInput();
         }
 
-        $userId = auth()->id();
-
-        return DB::transaction(function () use ($data, $engine, $eventTypeFinal, $locationFinal, $userId) {
-
-            $durationLegacy = max(1, (int)$data['event_days'] * (int)$data['hours_per_day']);
+        return DB::transaction(function () use (
+            $data,
+            $engine,
+            $eventTypeFinal,
+            $locationFinal,
+            $userId,
+            $tenantId
+        ) {
+            $durationLegacy = max(1, (int) $data['event_days'] * (int) $data['hours_per_day']);
 
             $event = Event::create([
+                'tenant_id' => $tenantId,
                 'created_by' => $userId,
 
-                'event_name' => $data['event_name'],
-                'client_name' => $data['client_name'],
-                'client_whatsapp' => $data['client_whatsapp'],
+                'event_name' => trim($data['event_name']),
+                'client_name' => trim($data['client_name']),
+                'client_whatsapp' => trim($data['client_whatsapp']),
 
                 'event_type' => $eventTypeFinal,
                 'event_type_choice' => $data['event_type_choice'],
@@ -106,66 +141,70 @@ class EventController extends Controller
 
                 'participants' => (int) $data['participants'],
 
-                // city only
-                'location' => strtolower($locationFinal),
+                'location' => strtolower(trim($locationFinal)),
                 'location_choice' => $data['location_choice'],
                 'location_other' => $data['location_other'] ?? null,
 
-                // ✅ separate venue type
                 'venue_type' => $data['venue_type'],
 
-                'event_days' => (int)$data['event_days'],
-                'hours_per_day' => (int)$data['hours_per_day'],
-
-                // legacy
+                'event_days' => (int) $data['event_days'],
+                'hours_per_day' => (int) $data['hours_per_day'],
                 'duration' => $durationLegacy,
 
                 'service_level' => $data['service_level'],
                 'special_requirement' => $data['special_requirement'] ?? null,
 
-                'crew_operator_qty' => array_key_exists('crew_operator_qty', $data) ? $data['crew_operator_qty'] : null,
-                'crew_engineer_qty' => array_key_exists('crew_engineer_qty', $data) ? $data['crew_engineer_qty'] : null,
-                'crew_stage_qty' => array_key_exists('crew_stage_qty', $data) ? $data['crew_stage_qty'] : null,
+                'crew_operator_qty' => array_key_exists('crew_operator_qty', $data)
+                    ? $data['crew_operator_qty']
+                    : null,
+
+                'crew_engineer_qty' => array_key_exists('crew_engineer_qty', $data)
+                    ? $data['crew_engineer_qty']
+                    : null,
+
+                'crew_stage_qty' => array_key_exists('crew_stage_qty', $data)
+                    ? $data['crew_stage_qty']
+                    : null,
             ]);
 
             $result = $engine->run($event);
 
-            $breakdown  = $result['breakdown'] ?? [];
-            $traceJson  = $result['trace_json'] ?? null;
+            $breakdown = $result['breakdown'] ?? [];
+            $traceJson = $result['trace_json'] ?? null;
             $parsedTags = $result['parsed_tags'] ?? [];
 
             $estimation = Estimation::create([
-                'created_by'  => $userId,
-                'event_id'    => $event->id,
-                'total_cost'  => (int)($breakdown['total'] ?? 0),
-                'status'      => 'pending',
-                'breakdown'   => $breakdown,
-
-                'trace_json'  => $traceJson,
+                'tenant_id' => $tenantId,
+                'created_by' => $userId,
+                'event_id' => $event->id,
+                'total_cost' => (int) ($breakdown['total'] ?? 0),
+                'status' => 'pending',
+                'breakdown' => $breakdown,
+                'trace_json' => $traceJson,
                 'parsed_tags' => $parsedTags,
             ]);
 
             foreach (($result['inventory'] ?? []) as $name => $row) {
                 $lineTotal =
-                    (int)($row['unit_price'] ?? 0) *
-                    (int)($row['need'] ?? 0) *
-                    (int)($breakdown['duration_block'] ?? 1) *
-                    (int)($breakdown['equipment_days'] ?? 1);
+                    (int) ($row['unit_price'] ?? 0) *
+                    (int) ($row['need'] ?? 0) *
+                    (int) ($breakdown['duration_block'] ?? 1) *
+                    (int) ($breakdown['equipment_days'] ?? 1);
 
                 EstimationDetail::create([
-                    'estimation_id'  => $estimation->id,
+                    'estimation_id' => $estimation->id,
                     'equipment_name' => $name,
 
-                    'quantity' => (int)($row['need'] ?? 0),
-                    'price'    => (int)($row['unit_price'] ?? 0),
-                    'total'    => (int)$lineTotal,
+                    'quantity' => (int) ($row['need'] ?? 0),
+                    'price' => (int) ($row['unit_price'] ?? 0),
+                    'total' => (int) $lineTotal,
 
-                    'original_quantity' => (int)($row['need'] ?? 0),
-                    'original_price'    => (int)($row['unit_price'] ?? 0),
-                    'original_total'    => (int)$lineTotal,
+                    'original_quantity' => (int) ($row['need'] ?? 0),
+                    'original_price' => (int) ($row['unit_price'] ?? 0),
+                    'original_total' => (int) $lineTotal,
 
-                    'available' => (int)($row['available'] ?? 0),
-                    'shortage'  => (int)($row['shortage'] ?? 0),
+                    'available' => (int) ($row['available'] ?? 0),
+                    'shortage' => (int) ($row['shortage'] ?? 0),
                 ]);
             }
 

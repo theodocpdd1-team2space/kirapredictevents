@@ -10,8 +10,15 @@ use Illuminate\Support\Facades\Storage;
 
 class BusinessController extends Controller
 {
+    private function guardOwnerRole(): void
+    {
+        abort_unless(auth()->user()?->isOwner(), 403, 'Akses hanya untuk Owner.');
+    }
+
     public function edit()
     {
+        $this->guardOwnerRole();
+
         $businessName = Setting::getValue('business_name', 'Event Multimedia DSS');
         $businessLogo = Setting::getValue('business_logo', 'images/logo-kira.png');
 
@@ -20,6 +27,8 @@ class BusinessController extends Controller
 
     public function update(Request $request)
     {
+        $this->guardOwnerRole();
+
         $data = $request->validate([
             'business_name' => ['required', 'string', 'max:120'],
             'logo' => ['nullable', 'image', 'max:2048'],
@@ -45,17 +54,11 @@ class BusinessController extends Controller
         return back()->with('success', 'Business information updated.');
     }
 
-    /**
-     * Root folder public_html/storage di shared hosting.
-     */
     protected function sharedPublicStorageRoot(): string
     {
         return dirname(base_path(), 2) . '/public_html/storage';
     }
 
-    /**
-     * Copy a file from storage/app/public to public_html/storage.
-     */
     protected function syncPublicFile(string $relativePath): void
     {
         $source = storage_path('app/public/' . $relativePath);
@@ -64,7 +67,7 @@ class BusinessController extends Controller
         $target = $publicRoot . '/' . $relativePath;
         $targetDir = dirname($target);
 
-        if (! File::exists($targetDir)) {
+        if (!File::exists($targetDir)) {
             File::makeDirectory($targetDir, 0755, true);
         }
 
@@ -73,18 +76,16 @@ class BusinessController extends Controller
         }
     }
 
-    /**
-     * Delete file from both storage/app/public and public_html/storage.
-     */
     protected function deletePublicFile(?string $relativePath): void
     {
-        if (! $relativePath) {
+        if (!$relativePath) {
             return;
         }
 
         Storage::disk('public')->delete($relativePath);
 
         $publicFile = $this->sharedPublicStorageRoot() . '/' . $relativePath;
+
         if (File::exists($publicFile)) {
             File::delete($publicFile);
         }

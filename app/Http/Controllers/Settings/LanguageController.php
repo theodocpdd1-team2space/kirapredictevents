@@ -10,7 +10,8 @@ class LanguageController extends Controller
 {
     public function edit()
     {
-        $language = Setting::getValue('language', 'id'); // id | en
+        $language = Setting::getUserValue('language', 'id');
+
         return view('pages.settings.language.edit', compact('language'));
     }
 
@@ -20,7 +21,7 @@ class LanguageController extends Controller
             'language' => ['required', 'in:id,en'],
         ]);
 
-        Setting::setValue('language', $data['language']);
+        Setting::setUserValue('language', $data['language']);
 
         return back()->with('success', 'Language updated.');
     }

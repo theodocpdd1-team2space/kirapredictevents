@@ -5,15 +5,33 @@
 
 @php
   $publicMode = (bool)($publicMode ?? false);
-  $viewMode   = request('view', 'final');
+  $viewMode = request('view', 'final');
+  $viewMode = in_array($viewMode, ['final', 'original'], true) ? $viewMode : 'final';
+
+  $user = auth()->user();
+  $isOwner = !$publicMode && $user?->isOwner();
+  $isStaff = !$publicMode && $user?->isStaff();
 
   $bizName = \App\Models\Setting::getValue('business_name', 'Kira — Event Multimedia DSS');
   $bizLogo = \App\Models\Setting::getValue('business_logo', 'images/logo-kira.png');
 
-  // ✅ print mode: ?print=detail|summary → auto hide UI (treat as public)
-  $printMode   = request('print'); // detail|summary|null
-  $isPrintView = in_array($printMode, ['detail','summary'], true);
-  if ($isPrintView) $publicMode = true;
+  $allDetails = $estimation->details ?? collect();
+
+  // ✅ FINAL: tampilkan item aktif saja.
+  // ✅ ORIGINAL: tampilkan item yang memang ada di estimasi awal saja,
+  // termasuk yang sekarang sudah dihapus pada revisi.
+  if ($viewMode === 'original') {
+      $displayDetails = $allDetails->filter(function ($d) {
+          return (int)($d->original_quantity ?? 0) > 0
+              || (int)($d->original_total ?? 0) > 0;
+      })->values();
+  } else {
+      $displayDetails = $allDetails->filter(function ($d) {
+          return !((bool)($d->is_removed ?? false)) && (int)($d->quantity ?? 0) > 0;
+      })->values();
+  }
+
+  $displayHasShortage = $displayDetails->sum('shortage') > 0;
 
   $badge = match($estimation->status) {
     'approved' => 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400',
@@ -30,6 +48,7 @@
     'overestimated'  => 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400',
     default          => 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400',
   };
+
   $accLabel = match($acc) {
     'accurate'       => 'Accurate',
     'underestimated' => 'Underestimated',
@@ -37,12 +56,10 @@
     default          => null,
   };
 
-  // breakdown
   $b = is_array($estimation->breakdown)
     ? $estimation->breakdown
     : (json_decode($estimation->breakdown ?? '[]', true) ?: []);
 
-  // Toggle url final/original
   $selfUrlFinal = $publicMode
       ? route('share.estimations.show', $estimation->share_token)
       : route('estimations.show', $estimation->id);
@@ -51,22 +68,15 @@
       ? (route('share.estimations.show', $estimation->share_token) . '?view=original')
       : (route('estimations.show', $estimation->id) . '?view=original');
 
-  // parsed tags
   $parsedTags = is_array($estimation->parsed_tags ?? null)
     ? $estimation->parsed_tags
     : (json_decode($estimation->parsed_tags ?? '[]', true) ?: []);
 
-  // trace from controller (owner only)
   $traceArr = $traceArr ?? [];
 
-  // share url
   $shareUrl = $estimation->share_token
     ? route('share.estimations.show', $estimation->share_token)
     : null;
-
-  // print links
-  $printDetailUrl  = route('estimations.show', $estimation->id) . '?print=detail';
-  $printSummaryUrl = route('estimations.show', $estimation->id) . '?print=summary';
 @endphp
 
 @section('content')
@@ -84,7 +94,7 @@
       </p>
 
       <div class="mt-3 flex flex-wrap items-center gap-2">
-        @if($hasShortage)
+        @if($displayHasShortage)
           <span class="inline-flex items-center rounded-full bg-red-50 dark:bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20">
             Inventory shortage detected
           </span>
@@ -104,8 +114,7 @@
           </span>
         @endif
 
-        {{-- Toggle Final / Original (hide on print) --}}
-        @if(!$isPrintView && in_array($estimation->status, ['revised','approved'], true))
+        @if(in_array($estimation->status, ['revised','approved'], true))
           <div class="inline-flex rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
             <a href="{{ $selfUrlFinal }}"
                class="px-4 py-2 text-sm font-semibold
@@ -127,7 +136,6 @@
         @endif
       </div>
 
-      {{-- Parsed Tags --}}
       @if(!empty($parsedTags))
         <div class="mt-4">
           <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Parsed Tags</div>
@@ -141,7 +149,6 @@
         </div>
       @endif
 
-      {{-- Revision note --}}
       @if(!empty($estimation->revision_note))
         <div class="mt-4 rounded-xl border border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 p-4 text-sm text-blue-900 dark:text-blue-200">
           <div class="font-semibold">Revision Note</div>
@@ -154,11 +161,9 @@
     <div class="no-print w-full lg:w-auto">
       <div class="flex flex-col gap-3">
 
-        {{-- ADMIN actions (hide when public) --}}
-        @unless($publicMode)
+        {{-- Owner actions --}}
+        @if($isOwner)
           <div class="flex flex-wrap items-center justify-start lg:justify-end gap-2">
-
-            {{-- Verify --}}
             <form method="POST" action="{{ route('estimations.status', $estimation->id) }}">
               @csrf
               @method('PATCH')
@@ -169,7 +174,6 @@
               </button>
             </form>
 
-            {{-- Reject --}}
             <form method="POST" action="{{ route('estimations.status', $estimation->id) }}"
                   onsubmit="return confirm('Reject estimation ini?');">
               @csrf
@@ -181,7 +185,6 @@
               </button>
             </form>
 
-            {{-- Accuracy --}}
             <div class="relative min-w-[220px]">
               <form method="POST" action="{{ route('estimations.accuracy', $estimation->id) }}">
                 @csrf
@@ -199,11 +202,10 @@
               </form>
             </div>
           </div>
-        @endunless
+        @endif
 
         {{-- Secondary --}}
         <div class="flex flex-wrap items-center justify-start lg:justify-end gap-2">
-
           @unless($publicMode)
             <a href="{{ route('estimations.index') }}"
                class="h-10 inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800">
@@ -216,7 +218,7 @@
             </a>
           @endunless
 
-          {{-- ✅ SHARE DROPDOWN --}}
+          {{-- Share dropdown --}}
           <div class="relative" id="shareWrap">
             <button type="button" id="shareBtn"
                     class="h-10 inline-flex items-center gap-2 rounded-xl bg-slate-900 dark:bg-slate-800 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 dark:hover:bg-slate-700">
@@ -227,7 +229,6 @@
             <div id="shareMenu"
                  class="hidden absolute right-0 mt-2 w-64 origin-top-right rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg ring-1 ring-black ring-opacity-5 z-50 overflow-hidden">
               <div class="py-1">
-
                 <a href="{{ route('estimations.pdf', $estimation->id) }}?mode=detail"
                    class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
                   PDF Detail
@@ -238,10 +239,9 @@
                   PDF Ringkas
                 </a>
 
-                <div class="my-1 h-px bg-slate-200 dark:bg-slate-700"></div>
-
-                {{-- Share Link --}}
                 @unless($publicMode)
+                  <div class="my-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+
                   @if(empty($estimation->share_token))
                     <form method="POST" action="{{ route('estimations.shareToken', $estimation->id) }}">
                       @csrf
@@ -266,24 +266,9 @@
                     </a>
                   @endif
                 @endunless
-
-                <div class="my-1 h-px bg-slate-200 dark:bg-slate-700"></div>
-
-                {{-- Print new tab --}}
-                <a href="{{ $printDetailUrl }}" target="_blank"
-                   class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
-                  Print Detail
-                </a>
-
-                <a href="{{ $printSummaryUrl }}" target="_blank"
-                   class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
-                  Print Ringkas
-                </a>
-
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </div>
@@ -354,7 +339,7 @@
     <div class="px-6 pb-6">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Equipment List</h2>
-        <p class="text-sm text-slate-500 dark:text-slate-400">{{ $estimation->details->count() }} items</p>
+        <p class="text-sm text-slate-500 dark:text-slate-400">{{ $displayDetails->count() }} items</p>
       </div>
 
       <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
@@ -369,15 +354,38 @@
               <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Total</th>
             </tr>
           </thead>
+
           <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
-            @foreach($estimation->details as $d)
+            @forelse($displayDetails as $d)
               @php
-                $qty = $viewMode==='original' ? (int)($d->original_quantity ?? $d->quantity) : (int)$d->quantity;
-                $price = $viewMode==='original' ? (int)($d->original_price ?? $d->price) : (int)$d->price;
-                $lineTotal = $viewMode==='original' ? (int)($d->original_total ?? $d->total) : (int)$d->total;
+                $qty = $viewMode === 'original'
+                  ? (int)($d->original_quantity ?? 0)
+                  : (int)($d->quantity ?? 0);
+
+                $price = $viewMode === 'original'
+                  ? (int)($d->original_price ?? $d->price ?? 0)
+                  : (int)($d->price ?? 0);
+
+                $lineTotal = $viewMode === 'original'
+                  ? (int)($d->original_total ?? 0)
+                  : (int)($d->total ?? 0);
+
+                $isRemoved = (bool)($d->is_removed ?? false);
               @endphp
-              <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                <td class="px-4 py-3 font-semibold text-slate-900 dark:text-white">{{ $d->equipment_name }}</td>
+
+              <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 {{ $viewMode === 'original' && $isRemoved ? 'opacity-75' : '' }}">
+                <td class="px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                  <div class="flex flex-col gap-1">
+                    <span>{{ $d->equipment_name }}</span>
+
+                    @if($viewMode === 'original' && $isRemoved)
+                      <span class="w-fit inline-flex items-center rounded-full bg-red-50 dark:bg-red-500/10 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20">
+                        Removed in final
+                      </span>
+                    @endif
+                  </div>
+                </td>
+
                 <td class="px-4 py-3 text-right text-slate-900 dark:text-slate-300">{{ $qty }}</td>
                 <td class="px-4 py-3 text-right text-slate-900 dark:text-slate-300">{{ (int)$d->available }}</td>
                 <td class="px-4 py-3 text-right">
@@ -392,7 +400,13 @@
                 <td class="px-4 py-3 text-right text-slate-900 dark:text-slate-300">Rp {{ number_format($price,0,',','.') }}</td>
                 <td class="px-4 py-3 text-right font-semibold text-slate-900 dark:text-white">Rp {{ number_format($lineTotal,0,',','.') }}</td>
               </tr>
-            @endforeach
+            @empty
+              <tr>
+                <td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                  No equipment items.
+                </td>
+              </tr>
+            @endforelse
           </tbody>
         </table>
       </div>
@@ -410,18 +424,22 @@
           <span class="text-slate-600 dark:text-slate-400">Equipment</span>
           <span class="font-semibold text-slate-900 dark:text-white">Rp {{ number_format((int)($b['equipment'] ?? 0),0,',','.') }}</span>
         </div>
+
         <div class="flex items-center justify-between text-sm">
           <span class="text-slate-600 dark:text-slate-400">Labor Crew</span>
           <span class="font-semibold text-slate-900 dark:text-white">Rp {{ number_format((int)($b['labor'] ?? 0),0,',','.') }}</span>
         </div>
+
         <div class="flex items-center justify-between text-sm">
           <span class="text-slate-600 dark:text-slate-400">Transportation</span>
           <span class="font-semibold text-slate-900 dark:text-white">Rp {{ number_format((int)($b['transport'] ?? 0),0,',','.') }}</span>
         </div>
+
         <div class="flex items-center justify-between text-sm">
           <span class="text-slate-600 dark:text-slate-400">Operational</span>
           <span class="font-semibold text-slate-900 dark:text-white">Rp {{ number_format((int)($b['operational'] ?? 0),0,',','.') }}</span>
         </div>
+
         @if(isset($b['markup']))
           <div class="flex items-center justify-between text-sm">
             <span class="text-slate-600 dark:text-slate-400">Markup</span>
@@ -438,11 +456,12 @@
   </div>
 
   {{-- DECISION TREE (owner only) --}}
-  @unless($publicMode)
+  @if($isOwner)
     @if(!empty($traceArr) && !empty($traceArr['steps']))
       @php
         $steps = $traceArr['steps'] ?? [];
         $stepByName = [];
+
         foreach ($steps as $s) {
           $name = $s['step'] ?? 'unknown';
           $stepByName[$name] = $s;
@@ -455,6 +474,7 @@
         $ruleTrace = $rulesStep['rule_trace'] ?? [];
         $matchedRules = [];
         $unmatchedRules = [];
+
         foreach ($ruleTrace as $r) {
           if (!empty($r['matched'])) $matchedRules[] = $r;
           else $unmatchedRules[] = $r;
@@ -490,7 +510,6 @@
               </button>
 
               <ul class="dt-node-children">
-                {{-- PARSER --}}
                 <li class="dt-node">
                   <button type="button" class="dt-btn" data-dt-toggle>
                     <span class="dt-dot dt-dot-step"></span>
@@ -525,7 +544,6 @@
                   </ul>
                 </li>
 
-                {{-- RULES --}}
                 <li class="dt-node">
                   <button type="button" class="dt-btn" data-dt-toggle>
                     <span class="dt-dot dt-dot-step"></span>
@@ -600,7 +618,6 @@
                   </ul>
                 </li>
 
-                {{-- COSTS --}}
                 <li class="dt-node">
                   <button type="button" class="dt-btn" data-dt-toggle>
                     <span class="dt-dot dt-dot-step"></span>
@@ -618,7 +635,6 @@
                     @endif
                   </ul>
                 </li>
-
               </ul>
             </li>
           </ul>
@@ -712,11 +728,9 @@
         })();
       </script>
     @endif
-  @endunless
-
+  @endif
 </div>
 
-{{-- Print styles --}}
 <style>
   @media print {
     aside, header, .no-print { display: none !important; }
@@ -726,7 +740,6 @@
   }
 </style>
 
-{{-- Share dropdown + copy + auto print --}}
 <script>
 (function(){
   const btn  = document.getElementById('shareBtn');
@@ -748,6 +761,7 @@
   }
 
   const copyBtn = document.getElementById('copyShareLinkBtn');
+
   if (copyBtn) {
     copyBtn.addEventListener('click', async () => {
       const link = copyBtn.getAttribute('data-link');
@@ -761,14 +775,6 @@
       } catch (err) {
         window.prompt('Copy link:', link);
       }
-    });
-  }
-
-  const url = new URL(window.location.href);
-  const p = url.searchParams.get('print');
-  if (p === 'detail' || p === 'summary') {
-    window.addEventListener('load', () => {
-      setTimeout(() => window.print(), 250);
     });
   }
 })();

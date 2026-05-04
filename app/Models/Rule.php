@@ -7,7 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 class Rule extends Model
 {
     protected $fillable = [
-        'user_id',
+        'tenant_id',
+        'created_by',
+        'updated_by',
+
         'condition_field',
         'operator',
         'value',
@@ -19,7 +22,27 @@ class Rule extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
-        // simpan action sebagai JSON di DB, dipakai sebagai array di PHP
         'action' => 'array',
+        'priority' => 'integer',
     ];
+
+    public function tenant()
+    {
+        return $this->belongsTo(Tenant::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updater()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function isActive(): bool
+    {
+        return (bool) $this->is_active;
+    }
 }

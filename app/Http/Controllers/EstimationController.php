@@ -13,30 +13,47 @@ use Illuminate\Support\Str;
 
 class EstimationController extends Controller
 {
-    private function guardOwner(Estimation $estimation): void
+    private function tenantId(): int
     {
-        abort_unless((int) $estimation->created_by === (int) auth()->id(), 403);
+        $tenantId = auth()->user()?->tenant_id;
+
+        abort_unless($tenantId, 403, 'User belum memiliki tenant.');
+
+        return (int) $tenantId;
+    }
+
+    private function guardTenant(Estimation $estimation): void
+    {
+        abort_unless((int) $estimation->tenant_id === $this->tenantId(), 403);
+    }
+
+    private function guardOwnerRole(): void
+    {
+        abort_unless(auth()->user()?->isOwner(), 403, 'Akses hanya untuk Owner.');
     }
 
     private function durationBlockFromHoursPerDay(int $hoursPerDay): int
     {
         $h = max(1, $hoursPerDay);
+
         return $h <= 4 ? 1 : ($h <= 8 ? 2 : 3);
     }
 
     public function index(Request $request)
     {
-        $userId = auth()->id();
+        $tenantId = $this->tenantId();
+
         $q = $request->get('search');
         $status = $request->get('status', 'all');
 
-        $items = Estimation::with('event')
-            ->where('created_by', $userId)
+        $items = Estimation::with(['event', 'creator'])
+            ->where('tenant_id', $tenantId)
             ->when($status !== 'all', fn ($qr) => $qr->where('status', $status))
             ->when($q, function ($qr) use ($q) {
                 $qr->whereHas('event', function ($ev) use ($q) {
                     $ev->where('event_type', 'like', "%{$q}%")
-                        ->orWhere('event_name', 'like', "%{$q}%");
+                        ->orWhere('event_name', 'like', "%{$q}%")
+                        ->orWhere('client_name', 'like', "%{$q}%");
                 });
             })
             ->latest()
@@ -48,12 +65,26 @@ class EstimationController extends Controller
 
     public function show(Estimation $estimation)
     {
-        $this->guardOwner($estimation);
+        $this->guardTenant($estimation);
 
-        $estimation->load(['event', 'details']);
-        $hasShortage = $estimation->details->sum('shortage') > 0;
+        $estimation->load([
+            'event',
+            'creator',
+            'details' => fn ($q) => $q->orderBy('id', 'asc'),
+        ]);
+
+        $viewMode = request('view', 'final');
+
+        $detailQuery = $estimation->details;
+
+        if ($viewMode !== 'original') {
+            $detailQuery = $detailQuery->where('is_removed', false);
+        }
+
+        $hasShortage = $detailQuery->sum('shortage') > 0;
 
         $traceArr = [];
+
         if (is_array($estimation->trace_json ?? null)) {
             $traceArr = $estimation->trace_json;
         } elseif (is_string($estimation->trace_json ?? null)) {
@@ -65,7 +96,9 @@ class EstimationController extends Controller
 
     public function bulkDelete(Request $request)
     {
-        $userId = auth()->id();
+        $this->guardOwnerRole();
+
+        $tenantId = $this->tenantId();
 
         $data = $request->validate([
             'ids'   => ['required', 'array', 'min:1'],
@@ -74,13 +107,15 @@ class EstimationController extends Controller
 
         $ids = $data['ids'];
 
-        DB::transaction(function () use ($ids, $userId) {
-            $ownedIds = Estimation::where('created_by', $userId)
+        DB::transaction(function () use ($ids, $tenantId) {
+            $ownedIds = Estimation::where('tenant_id', $tenantId)
                 ->whereIn('id', $ids)
                 ->pluck('id')
                 ->all();
 
-            if (count($ownedIds) === 0) return;
+            if (count($ownedIds) === 0) {
+                return;
+            }
 
             EstimationDetail::whereIn('estimation_id', $ownedIds)->delete();
             Estimation::whereIn('id', $ownedIds)->delete();
@@ -91,39 +126,44 @@ class EstimationController extends Controller
 
     public function updateStatus(Request $request, Estimation $estimation)
     {
-        $this->guardOwner($estimation);
+        $this->guardTenant($estimation);
+        $this->guardOwnerRole();
 
         $data = $request->validate([
             'status' => ['required', 'in:pending,approved,rejected,revised'],
         ]);
 
-        $estimation->update(['status' => $data['status']]);
+        $estimation->update([
+            'status' => $data['status'],
+        ]);
 
         return back()->with('success', 'Status updated.');
     }
 
     public function updateAccuracy(Request $request, Estimation $estimation)
     {
-        $this->guardOwner($estimation);
+        $this->guardTenant($estimation);
+        $this->guardOwnerRole();
 
         $data = $request->validate([
             'accuracy' => ['nullable', 'in:accurate,underestimated,overestimated'],
         ]);
 
-        $estimation->update(['accuracy' => $data['accuracy'] ?? null]);
+        $estimation->update([
+            'accuracy' => $data['accuracy'] ?? null,
+        ]);
 
         return back()->with('success', 'Accuracy updated.');
     }
 
-    /**
-     * PDF download
-     * mode: detail | summary
-     */
     public function pdf(Estimation $estimation)
     {
-        $this->guardOwner($estimation);
+        $this->guardTenant($estimation);
 
-        $estimation->load(['event', 'details']);
+        $estimation->load([
+            'event',
+            'details' => fn ($q) => $q->where('is_removed', false)->orderBy('id', 'asc'),
+        ]);
 
         $mode = request('mode', 'detail');
         $mode = in_array($mode, ['detail', 'summary'], true) ? $mode : 'detail';
@@ -139,8 +179,14 @@ class EstimationController extends Controller
         $filename = Str::slug($eventName) . "-estimation-{$mode}.pdf";
 
         $breakdown = $estimation->breakdown;
-        if (is_string($breakdown)) $breakdown = json_decode($breakdown, true) ?: [];
-        if (!is_array($breakdown)) $breakdown = [];
+
+        if (is_string($breakdown)) {
+            $breakdown = json_decode($breakdown, true) ?: [];
+        }
+
+        if (!is_array($breakdown)) {
+            $breakdown = [];
+        }
 
         $pdf = Pdf::loadView('pages.estimations.pdf', [
             'estimation' => $estimation,
@@ -155,13 +201,9 @@ class EstimationController extends Controller
         return $pdf->download($filename);
     }
 
-    /**
-     * WhatsApp send (redirect to wa.me)
-     * message: event + total + share link
-     */
     public function wa(Estimation $estimation)
     {
-        $this->guardOwner($estimation);
+        $this->guardTenant($estimation);
 
         $estimation->load(['event']);
 
@@ -171,16 +213,30 @@ class EstimationController extends Controller
         $total      = (int) ($estimation->total_cost ?? 0);
 
         $wa = preg_replace('/\D+/', '', $waRaw ?? '');
+
         if ($wa === '') {
-            return back()->withErrors(['client_whatsapp' => 'Nomor WhatsApp client belum ada di event.']);
+            return back()->withErrors([
+                'client_whatsapp' => 'Nomor WhatsApp client belum ada di event.',
+            ]);
         }
 
-        if (str_starts_with($wa, '0')) $wa = '62' . substr($wa, 1);
-        if (str_starts_with($wa, '8')) $wa = '62' . $wa;
+        if (str_starts_with($wa, '0')) {
+            $wa = '62' . substr($wa, 1);
+        }
 
-        $shareLink = $estimation->share_token
-            ? route('share.estimations.show', $estimation->share_token)
-            : null;
+        if (str_starts_with($wa, '8')) {
+            $wa = '62' . $wa;
+        }
+
+        if (empty($estimation->share_token)) {
+            $estimation->update([
+                'share_token' => $this->makeUniqueShareToken(),
+            ]);
+
+            $estimation->refresh();
+        }
+
+        $shareLink = route('share.estimations.show', $estimation->share_token);
 
         $lines = [];
         $lines[] = "Halo " . ($clientName !== '' ? $clientName : 'Bapak/Ibu') . ",";
@@ -189,9 +245,7 @@ class EstimationController extends Controller
         $lines[] = "Event: {$eventName}";
         $lines[] = "Total: Rp " . number_format($total, 0, ',', '.');
         $lines[] = "";
-
-        if ($shareLink) $lines[] = "Detail estimasi: {$shareLink}";
-
+        $lines[] = "Detail estimasi: {$shareLink}";
         $lines[] = "";
         $lines[] = "Terima kasih.";
 
@@ -200,39 +254,40 @@ class EstimationController extends Controller
 
     public function edit(Estimation $estimation)
     {
-        $this->guardOwner($estimation);
+        $this->guardTenant($estimation);
 
-        $estimation->load(['event', 'details']);
+        $estimation->load([
+            'event',
+            'details' => fn ($q) => $q->orderBy('id', 'asc'),
+        ]);
 
-        $inventories = Inventory::where('user_id', auth()->id())
+        $inventories = Inventory::where('tenant_id', $this->tenantId())
             ->orderBy('equipment_name')
             ->get();
 
         return view('pages.estimations.edit', compact('estimation', 'inventories'));
     }
 
-    /**
-     * revise estimation (edit rows + add new items)
-     */
     public function update(Request $request, Estimation $estimation)
     {
-        $this->guardOwner($estimation);
+        $this->guardTenant($estimation);
 
-        $estimation->load(['event', 'details']);
+        $estimation->load([
+            'event',
+            'details' => fn ($q) => $q->orderBy('id', 'asc'),
+        ]);
 
         $data = $request->validate([
             'revision_note' => ['nullable', 'string', 'max:1000'],
 
-            // existing rows
             'items' => ['nullable', 'array'],
             'items.*.id' => ['required', 'integer'],
-            'items.*.equipment_name' => ['nullable', 'string', 'max:255'], // ✅ allow change name
+            'items.*.equipment_name' => ['nullable', 'string', 'max:255'],
             'items.*.quantity' => ['required', 'integer', 'min:0'],
             'items.*.price' => ['nullable', 'integer', 'min:0'],
             'items.*.unit' => ['nullable', 'string', 'max:20'],
             'items.*.notes' => ['nullable', 'string', 'max:500'],
 
-            // add from inventory by name (autocomplete)
             'new_items' => ['nullable', 'array'],
             'new_items.*.equipment_name' => ['required', 'string', 'max:255'],
             'new_items.*.quantity' => ['required', 'integer', 'min:1'],
@@ -240,7 +295,6 @@ class EstimationController extends Controller
             'new_items.*.unit' => ['nullable', 'string', 'max:20'],
             'new_items.*.notes' => ['nullable', 'string', 'max:500'],
 
-            // add custom/sewa (free text)
             'custom_items' => ['nullable', 'array'],
             'custom_items.*.name' => ['required', 'string', 'max:255'],
             'custom_items.*.unit' => ['nullable', 'string', 'max:20'],
@@ -249,82 +303,102 @@ class EstimationController extends Controller
             'custom_items.*.notes' => ['nullable', 'string', 'max:500'],
         ]);
 
+        $tenantId = $this->tenantId();
         $userId = auth()->id();
 
-        return DB::transaction(function () use ($data, $estimation, $userId) {
-
-            $eventDays   = max(1, (int)($estimation->event->event_days ?? 1));
-            $hoursPerDay = max(1, (int)($estimation->event->hours_per_day ?? 1));
+        return DB::transaction(function () use ($data, $estimation, $tenantId, $userId) {
+            $eventDays = max(1, (int) ($estimation->event->event_days ?? 1));
+            $hoursPerDay = max(1, (int) ($estimation->event->hours_per_day ?? 1));
             $durationBlock = $this->durationBlockFromHoursPerDay($hoursPerDay);
 
-            // multiplier untuk total baris
             $mult = $eventDays * $durationBlock;
 
             $byId = $estimation->details->keyBy('id');
 
-            // ✅ update existing rows (qty + price + unit + notes + ganti equipment_name)
             foreach (($data['items'] ?? []) as $row) {
-                $detail = $byId->get((int)($row['id'] ?? 0));
-                if (!$detail) continue;
+                $detail = $byId->get((int) ($row['id'] ?? 0));
 
-                $qty = (int)($row['quantity'] ?? 0);
+                if (!$detail) {
+                    continue;
+                }
+
+                $qty = (int) ($row['quantity'] ?? 0);
 
                 if ($qty === 0) {
-                    $detail->delete();
+                    $detail->update([
+                        'quantity'   => 0,
+                        'total'      => 0,
+                        'shortage'   => 0,
+                        'is_removed' => true,
+                        'removed_at' => now(),
+                        'removed_by' => $userId,
+                        'notes'      => $row['notes'] ?? ($detail->notes ?? null),
+                    ]);
+
                     continue;
                 }
 
                 $unitPrice = array_key_exists('price', $row) && $row['price'] !== null
-                    ? (int)$row['price']
-                    : (int)$detail->price;
+                    ? (int) $row['price']
+                    : (int) $detail->price;
 
-                // ✅ NEW: handle ganti equipment_name
-                $newName = trim((string)($row['equipment_name'] ?? $detail->equipment_name));
-                if ($newName === '') $newName = $detail->equipment_name;
+                $newName = trim((string) ($row['equipment_name'] ?? $detail->equipment_name));
 
-                // cek inventory kalau match
-                $inv = Inventory::where('user_id', $userId)
+                if ($newName === '') {
+                    $newName = $detail->equipment_name;
+                }
+
+                $inv = Inventory::where('tenant_id', $tenantId)
                     ->where('equipment_name', $newName)
                     ->first();
 
-                $available = $inv ? (int)$inv->quantity : (int)($detail->available ?? 0);
-                $shortage  = max(0, $qty - $available);
+                $available = $inv ? (int) $inv->quantity : (int) ($detail->available ?? 0);
+                $shortage = max(0, $qty - $available);
 
-                // kalau match inventory => dianggap bukan custom
-                $isCustom = $inv ? 0 : (int)($detail->is_custom ? 1 : 0);
+                $isCustom = $inv ? 0 : (int) ($detail->is_custom ? 1 : 0);
 
                 $detail->update([
                     'equipment_name' => $newName,
                     'is_custom'      => $isCustom,
                     'available'      => $available,
                     'shortage'       => $shortage,
-
                     'quantity'       => $qty,
                     'price'          => $unitPrice,
                     'unit'           => $row['unit'] ?? ($detail->unit ?? null),
                     'notes'          => $row['notes'] ?? ($detail->notes ?? null),
                     'total'          => $unitPrice * $qty * $mult,
+
+                    // kalau item sebelumnya pernah dihapus, lalu qty diisi lagi, aktifkan kembali
+                    'is_removed'     => false,
+                    'removed_at'     => null,
+                    'removed_by'     => null,
                 ]);
             }
 
-            // ✅ add items from inventory
             foreach (($data['new_items'] ?? []) as $row) {
-                $name = trim((string)($row['equipment_name'] ?? ''));
-                if ($name === '') continue;
+                $name = trim((string) ($row['equipment_name'] ?? ''));
 
-                $inv = Inventory::where('user_id', $userId)
+                if ($name === '') {
+                    continue;
+                }
+
+                $inv = Inventory::where('tenant_id', $tenantId)
                     ->where('equipment_name', $name)
                     ->first();
 
-                if (!$inv) continue;
+                if (!$inv) {
+                    continue;
+                }
 
-                $qty = (int)($row['quantity'] ?? 0);
-                if ($qty <= 0) continue;
+                $qty = (int) ($row['quantity'] ?? 0);
 
-                // price: override > inventory
+                if ($qty <= 0) {
+                    continue;
+                }
+
                 $unitPrice = isset($row['price']) && $row['price'] !== null
-                    ? (int)$row['price']
-                    : (int)$inv->price;
+                    ? (int) $row['price']
+                    : (int) $inv->price;
 
                 $lineTotal = $unitPrice * $qty * $mult;
 
@@ -339,24 +413,34 @@ class EstimationController extends Controller
                     'price'          => $unitPrice,
                     'total'          => $lineTotal,
 
+                    // item baru tidak ada di original
                     'original_quantity' => 0,
                     'original_price'    => $unitPrice,
                     'original_total'    => 0,
 
-                    'available'      => (int)$inv->quantity,
-                    'shortage'       => max(0, $qty - (int)$inv->quantity),
+                    'available'      => (int) $inv->quantity,
+                    'shortage'       => max(0, $qty - (int) $inv->quantity),
+
+                    'is_removed'     => false,
+                    'removed_at'     => null,
+                    'removed_by'     => null,
                 ]);
             }
 
-            // ✅ add custom/sewa items
             foreach (($data['custom_items'] ?? []) as $row) {
-                $name = trim((string)($row['name'] ?? ''));
-                if ($name === '') continue;
+                $name = trim((string) ($row['name'] ?? ''));
 
-                $qty = (int)($row['quantity'] ?? 0);
-                if ($qty <= 0) continue;
+                if ($name === '') {
+                    continue;
+                }
 
-                $unitPrice = (int)($row['price'] ?? 0);
+                $qty = (int) ($row['quantity'] ?? 0);
+
+                if ($qty <= 0) {
+                    continue;
+                }
+
+                $unitPrice = (int) ($row['price'] ?? 0);
                 $lineTotal = $unitPrice * $qty * $mult;
 
                 EstimationDetail::create([
@@ -370,40 +454,52 @@ class EstimationController extends Controller
                     'price'          => $unitPrice,
                     'total'          => $lineTotal,
 
+                    // item custom baru tidak ada di original
                     'original_quantity' => 0,
                     'original_price'    => $unitPrice,
                     'original_total'    => 0,
 
                     'available'      => 0,
                     'shortage'       => 0,
+
+                    'is_removed'     => false,
+                    'removed_at'     => null,
+                    'removed_by'     => null,
                 ]);
             }
 
-            // recalc totals
             $estimation->refresh();
-            $equipmentCost = (int)$estimation->details()->sum('total');
+
+            $equipmentCost = (int) $estimation->details()
+                ->where('is_removed', false)
+                ->sum('total');
 
             $b = $estimation->breakdown ?? [];
-            if (is_string($b)) $b = json_decode($b, true) ?: [];
-            if (!is_array($b)) $b = [];
 
-            $labor = (int)($b['labor'] ?? 0);
-            $transport = (int)($b['transport'] ?? 0);
+            if (is_string($b)) {
+                $b = json_decode($b, true) ?: [];
+            }
 
-            $opPercent = (float) Setting::getValue('operational_percent', 5);
+            if (!is_array($b)) {
+                $b = [];
+            }
+
+            $labor = (int) ($b['labor'] ?? 0);
+            $transport = (int) ($b['transport'] ?? 0);
+
+            $opPercent = (float) Setting::getValue('operational_percent', 5, $tenantId);
             $operational = (int) round($equipmentCost * ($opPercent / 100));
 
-            $markupPercent = (float) Setting::getValue('markup_percent', 0);
+            $markupPercent = (float) Setting::getValue('markup_percent', 0, $tenantId);
+
             $subTotal = $equipmentCost + $labor + $transport + $operational;
             $markup = (int) round($subTotal * ($markupPercent / 100));
-
             $total = $subTotal + $markup;
 
             $b['equipment'] = $equipmentCost;
             $b['operational'] = $operational;
             $b['markup'] = $markup;
             $b['total'] = $total;
-
             $b['event_days'] = $eventDays;
             $b['hours_per_day'] = $hoursPerDay;
             $b['duration_block'] = $durationBlock;
@@ -432,15 +528,15 @@ class EstimationController extends Controller
         return $token;
     }
 
-    /**
-     * Generate share token if missing
-     */
     public function ensureShareToken(Request $request, Estimation $estimation)
     {
-        $this->guardOwner($estimation);
+        $this->guardTenant($estimation);
 
         if (empty($estimation->share_token)) {
-            $estimation->update(['share_token' => $this->makeUniqueShareToken()]);
+            $estimation->update([
+                'share_token' => $this->makeUniqueShareToken(),
+            ]);
+
             $estimation->refresh();
         }
 
@@ -449,16 +545,24 @@ class EstimationController extends Controller
         return back()->with('success', 'Share link ready: ' . $shareUrl);
     }
 
-    /**
-     * Public show by token
-     */
     public function publicShow(string $token)
     {
-        $estimation = Estimation::with(['event', 'details'])
+        $estimation = Estimation::with([
+            'event',
+            'details' => fn ($q) => $q->orderBy('id', 'asc'),
+        ])
             ->where('share_token', $token)
             ->firstOrFail();
 
-        $hasShortage = $estimation->details->sum('shortage') > 0;
+        $viewMode = request('view', 'final');
+
+        $detailQuery = $estimation->details;
+
+        if ($viewMode !== 'original') {
+            $detailQuery = $detailQuery->where('is_removed', false);
+        }
+
+        $hasShortage = $detailQuery->sum('shortage') > 0;
 
         return view('pages.estimations.show', [
             'estimation'  => $estimation,

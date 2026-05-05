@@ -12,11 +12,26 @@ class DashboardController extends Controller
 {
     private function tenantId(): int
     {
-        $tenantId = auth()->user()?->tenant_id;
+        $user = auth()->user();
 
-        abort_unless($tenantId, 403, 'User belum memiliki tenant.');
+        \Log::error('TENANT DEBUG DASHBOARD', [
+            'auth_check' => auth()->check(),
+            'auth_id' => $user?->id,
+            'auth_email' => $user?->email,
+            'auth_tenant_id' => $user?->tenant_id,
+            'db_name' => config('database.connections.mysql.database'),
+            'session_driver' => config('session.driver'),
+            'user_from_db' => $user
+                ? \App\Models\User::query()
+                    ->where('id', $user->id)
+                    ->first(['id', 'name', 'email', 'tenant_id', 'role', 'status'])
+                    ?->toArray()
+                : null,
+        ]);
 
-        return (int) $tenantId;
+        abort_unless($user && $user->tenant_id, 403, 'User belum memiliki tenant.');
+
+        return (int) $user->tenant_id;
     }
 
     private function moneyShort(int|float $value): string

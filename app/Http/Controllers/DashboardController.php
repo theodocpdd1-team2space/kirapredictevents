@@ -97,7 +97,10 @@ class DashboardController extends Controller
             ? (int) round($totalValue / $totalEstimations)
             : 0;
 
+        // PERHITUNGAN GROWTH (Bulan Ini vs Bulan Lalu)
         $monthStart = now()->startOfMonth();
+        $lastMonthStart = now()->subMonth()->startOfMonth();
+        $lastMonthEnd = now()->subMonth()->endOfMonth();
 
         $monthlyEstimations = (clone $baseEstimations)
             ->where('created_at', '>=', $monthStart)
@@ -106,6 +109,17 @@ class DashboardController extends Controller
         $monthlyValue = (int) (clone $baseEstimations)
             ->where('created_at', '>=', $monthStart)
             ->sum('total_cost');
+
+        $lastMonthValue = (int) (clone $baseEstimations)
+            ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
+            ->sum('total_cost');
+
+        if ($lastMonthValue === 0) {
+            $monthlyGrowthPercent = $monthlyValue > 0 ? 100 : 0;
+        } else {
+            $monthlyGrowthPercent = (int) round((($monthlyValue - $lastMonthValue) / $lastMonthValue) * 100);
+        }
+        // END PERHITUNGAN GROWTH
 
         $recentEstimations = (clone $baseEstimations)
             ->with(['event', 'creator'])
@@ -226,6 +240,9 @@ class DashboardController extends Controller
             'avgEstimationValue' => $avgEstimationValue,
             'monthlyEstimations' => $monthlyEstimations,
             'monthlyValue' => $monthlyValue,
+            
+            // Variabel Baru untuk Growth Persentase
+            'monthlyGrowthPercent' => $monthlyGrowthPercent,
 
             'inventoryItems' => $inventoryItems,
             'inventoryUnits' => $inventoryUnits,

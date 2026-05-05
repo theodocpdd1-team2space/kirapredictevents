@@ -96,7 +96,7 @@ class ProfileController extends Controller
      */
     protected function sharedPublicStorageRoot(): string
     {
-        return dirname(base_path(), 2) . '/public_html/storage';
+        return public_path('storage');
     }
 
     /**

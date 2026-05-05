@@ -88,7 +88,7 @@ class InventoryController extends Controller
 
     protected function sharedPublicStorageRoot(): string
     {
-        return dirname(base_path(), 2) . '/public_html/storage';
+        return public_path('storage');
     }
 
     protected function syncPublicFile(string $relativePath): void

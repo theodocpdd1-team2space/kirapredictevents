@@ -74,9 +74,13 @@
       {{-- Brand --}}
       <div class="px-6 pt-6 pb-5 border-b border-slate-100 dark:border-slate-800">
         <div class="flex items-start gap-3">
-          <div class="h-10 w-10 rounded-xl border border-slate-200 bg-white grid place-items-center overflow-hidden
-                      dark:border-slate-700 dark:bg-slate-800">
-            <img src="{{ asset($bizLogo) }}" class="h-8 w-8 object-contain" alt="{{ $bizName }}">
+          <div class="h-12 w-12 shrink-0 rounded-xl border border-slate-200 bg-white overflow-hidden
+            dark:border-slate-700 dark:bg-slate-800">
+            <img
+              src="{{ asset($bizLogo) }}"
+              class="h-full w-full object-contain p-1"
+              alt="{{ $bizName }}"
+            >
           </div>
           <div>
             <div class="font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">

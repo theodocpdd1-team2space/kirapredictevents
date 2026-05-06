@@ -19,10 +19,9 @@
     <div class="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur">
       <div class="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <div class="h-9 w-9 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center overflow-hidden">
-            {{-- logo optional (ambil dari settings) --}}
+          <div class="h-10 w-10 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
             @php($logo = \App\Models\Setting::getValue('business_logo', 'images/logo-kira.png'))
-            <img src="{{ asset($logo) }}" alt="Logo" class="h-6 w-6 object-contain">
+            <img src="{{ asset($logo) }}" alt="Logo" class="h-full w-full object-cover">
           </div>
           <div class="leading-tight">
             <div class="text-sm font-semibold text-slate-900 dark:text-white">

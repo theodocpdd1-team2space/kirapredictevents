@@ -31,8 +31,12 @@
       <div class="md:col-span-4">
         <label class="block text-sm font-semibold text-slate-900 dark:text-white mb-2 transition-colors">Current Logo</label>
         <div class="flex items-center gap-3">
-          <div class="h-12 w-12 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-center overflow-hidden transition-colors">
-            <img src="{{ asset($businessLogo) }}" class="h-10 w-10 object-contain" alt="logo">
+          <div class="h-14 w-14 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden transition-colors">
+            <img
+              src="{{ asset($businessLogo) }}"
+              class="h-full w-full object-contain p-1"
+              alt="logo"
+            >
           </div>
           <div class="text-xs text-slate-500 dark:text-slate-400 transition-colors">
             Used on invoice/PDF

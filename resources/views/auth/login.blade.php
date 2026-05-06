@@ -30,8 +30,8 @@
                 {{-- Logo Container --}}
                 <div class="mb-8 inline-block p-4 bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 self-start">
                     <div class="flex items-center space-x-4">
-                        <div class="w-16 h-16 bg-white rounded-2xl flex items-center justify-center p-1.5 shadow-lg shadow-blue-500/20">
-                            <img src="{{ asset('images/logo-kira.png') }}" alt="Logo KIRA" class="h-full w-full object-contain">
+                        <div class="w-16 h-16 bg-white rounded-2xl overflow-hidden shadow-lg shadow-blue-500/20">
+                            <img src="{{ asset('images/logo-kira.png') }}" alt="Logo KIRA" class="h-full w-full object-cover">
                         </div>
                         <span class="text-4xl font-black tracking-tighter text-white">Kira<span class="text-blue-500">.</span></span>
                     </div>
@@ -64,8 +64,8 @@
                     <div class="relative z-10">
                         {{-- Mobile Branding --}}
                         <div class="flex lg:hidden items-center space-x-3 mb-10">
-                            <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center p-1 shadow-md shadow-blue-500/20">
-                                <img src="{{ asset('images/logo-kira.png') }}" alt="Logo KIRA" class="h-full w-full object-contain">
+                            <div class="w-12 h-12 bg-white rounded-xl overflow-hidden shadow-md shadow-blue-500/20">
+                                <img src="{{ asset('images/logo-kira.png') }}" alt="Logo KIRA" class="h-full w-full object-cover">
                             </div>
                             <div>
                                 <span class="text-2xl font-black tracking-tighter text-white block leading-none">Kira<span class="text-blue-500">.</span></span>

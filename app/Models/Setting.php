@@ -65,13 +65,13 @@ class Setting extends Model
 
     public static function getUserValue(string $key, $default = null, ?int $userId = null)
     {
-        $userId = $userId ?? Auth::id();
+        $tenantId = Auth::user()?->tenant_id;
 
-        if (!$userId) {
+        if (!$tenantId) {
             return $default;
         }
 
-        $val = static::where('user_id', $userId)
+        $val = static::where('tenant_id', $tenantId)
             ->where('key', $key)
             ->value('value');
 
@@ -80,9 +80,9 @@ class Setting extends Model
 
     public static function setUserValue(string $key, $value, ?int $userId = null): void
     {
-        $userId = $userId ?? Auth::id();
+        $tenantId = Auth::user()?->tenant_id;
 
-        if (!$userId) {
+        if (!$tenantId) {
             return;
         }
 
@@ -92,12 +92,12 @@ class Setting extends Model
 
         static::updateOrCreate(
             [
-                'user_id' => $userId,
-                'key'     => $key,
+                'tenant_id' => $tenantId,
+                'key'       => $key,
             ],
             [
-                'tenant_id' => Auth::user()?->tenant_id,
-                'value'     => $stored,
+                'user_id' => $userId ?? Auth::id(),
+                'value'   => $stored,
             ]
         );
     }

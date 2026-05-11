@@ -48,9 +48,13 @@ class User extends Authenticatable
         return $this->hasMany(Estimation::class, 'created_by');
     }
 
+    /**
+     * Inventory yang dibuat oleh user.
+     * Pada tabel inventories, pembuat inventory disimpan pada kolom user_id.
+     */
     public function createdInventories()
     {
-        return $this->hasMany(Inventory::class, 'created_by');
+        return $this->hasMany(Inventory::class, 'user_id');
     }
 
     public function createdRules()

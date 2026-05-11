@@ -8,8 +8,7 @@ class Inventory extends Model
 {
     protected $fillable = [
         'tenant_id',
-        'created_by',
-
+        'user_id',
         'equipment_name',
         'category',
         'quantity',
@@ -28,9 +27,13 @@ class Inventory extends Model
         return $this->belongsTo(Tenant::class);
     }
 
+    /**
+     * User pembuat inventory.
+     * Pada database VPS, kolom pembuat inventory disimpan sebagai user_id.
+     */
     public function creator()
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function isActive(): bool

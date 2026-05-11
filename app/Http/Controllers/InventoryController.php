@@ -212,7 +212,7 @@ class InventoryController extends Controller
 
         $payload = [
             'tenant_id'      => $this->tenantId(),
-            'created_by'     => auth()->id(),
+            'user_id'        => auth()->id(),
             'equipment_name' => trim($data['equipment_name']),
             'category'       => $categoryFinal,
             'quantity'       => (int) $data['quantity'],
@@ -409,7 +409,7 @@ class InventoryController extends Controller
 
             $payload = [
                 'tenant_id'      => $tenantId,
-                'created_by'     => $userId,
+                'user_id'        => $userId,
                 'equipment_name' => $equipment,
                 'category'       => $category,
                 'quantity'       => $quantity,
@@ -419,7 +419,7 @@ class InventoryController extends Controller
 
             Inventory::updateOrCreate(
                 [
-                    'tenant_id' => $tenantId,
+                    'tenant_id'      => $tenantId,
                     'equipment_name' => $equipment,
                 ],
                 $payload

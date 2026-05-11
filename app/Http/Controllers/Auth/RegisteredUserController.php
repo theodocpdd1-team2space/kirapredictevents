@@ -9,8 +9,9 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
 
@@ -27,6 +28,9 @@ class RegisteredUserController extends Controller
     /**
      * Handle an incoming registration request.
      *
+     * Signup digunakan untuk membuat tenant/workspace baru.
+     * User yang melakukan signup otomatis menjadi Owner tenant tersebut.
+     *
      * @throws \Illuminate\Validation\ValidationException
      */
     public function store(Request $request): RedirectResponse
@@ -37,32 +41,48 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        $tenant = Tenant::query()->firstOrCreate(
-            ['slug' => 'wijaya-music'],
-            [
-                'name'   => 'Wijaya Music',
+        return DB::transaction(function () use ($validated) {
+            $tenantName = trim($validated['name']) . ' Workspace';
+
+            $tenant = Tenant::create([
+                'name'   => $tenantName,
+                'slug'   => $this->uniqueTenantSlug($tenantName),
                 'status' => 'active',
-            ]
-        );
+            ]);
 
-        $payload = [
-            'name'     => $validated['name'],
-            'email'    => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'role'     => 'owner',
-            'status'   => 'active',
-        ];
+            $user = User::create([
+                'tenant_id' => $tenant->id,
+                'name'      => $validated['name'],
+                'email'     => $validated['email'],
+                'password'  => Hash::make($validated['password']),
+                'role'      => 'owner',
+                'status'    => 'active',
+            ]);
 
-        if (Schema::hasColumn('users', 'tenant_id')) {
-            $payload['tenant_id'] = $tenant->id;
+            event(new Registered($user));
+
+            Auth::login($user);
+
+            return redirect()->route('dashboard');
+        });
+    }
+
+    private function uniqueTenantSlug(string $name): string
+    {
+        $base = Str::slug($name);
+
+        if ($base === '') {
+            $base = 'tenant';
         }
 
-        $user = User::create($payload);
+        $slug = $base;
+        $i = 1;
 
-        event(new Registered($user));
+        while (Tenant::where('slug', $slug)->exists()) {
+            $slug = $base . '-' . $i;
+            $i++;
+        }
 
-        Auth::login($user);
-
-        return redirect()->route('dashboard');
+        return $slug;
     }
 }

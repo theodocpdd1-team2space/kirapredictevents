@@ -72,11 +72,10 @@ class RuleController extends Controller
             'is_active'       => ['nullable'],
         ]);
 
-        $data['tenant_id']  = $this->tenantId();
-        $data['created_by'] = auth()->id();
-        $data['updated_by'] = auth()->id();
-        $data['action']     = $this->normalizeAction($data['action'] ?? null);
-        $data['is_active']  = $request->boolean('is_active');
+        $data['tenant_id'] = $this->tenantId();
+        $data['user_id'] = auth()->id();
+        $data['action'] = $this->normalizeAction($data['action'] ?? null);
+        $data['is_active'] = $request->boolean('is_active');
 
         Rule::create($data);
 
@@ -108,9 +107,8 @@ class RuleController extends Controller
             'is_active'       => ['nullable'],
         ]);
 
-        $data['action']     = $this->normalizeAction($data['action'] ?? null);
-        $data['is_active']  = $request->boolean('is_active');
-        $data['updated_by'] = auth()->id();
+        $data['action'] = $this->normalizeAction($data['action'] ?? null);
+        $data['is_active'] = $request->boolean('is_active');
 
         $rule->update($data);
 
@@ -125,8 +123,7 @@ class RuleController extends Controller
         $this->guardTenantRule($rule);
 
         $rule->update([
-            'is_active'  => !$rule->is_active,
-            'updated_by' => auth()->id(),
+            'is_active' => !$rule->is_active,
         ]);
 
         return back()->with('success', 'Rule status updated.');
@@ -204,8 +201,8 @@ class RuleController extends Controller
             }
 
             $conditionField = trim((string) ($r[$map['condition_field']] ?? ''));
-            $operator       = trim((string) ($r[$map['operator']] ?? ''));
-            $value          = trim((string) ($r[$map['value']] ?? ''));
+            $operator = trim((string) ($r[$map['operator']] ?? ''));
+            $value = trim((string) ($r[$map['value']] ?? ''));
 
             if ($conditionField === '' || $operator === '' || $value === '') {
                 $skip++;
@@ -216,15 +213,14 @@ class RuleController extends Controller
             $action = $this->normalizeAction($rawAction);
 
             $category = trim((string) ($r[$map['category']] ?? ''));
-            $priority = (int) ($r[$map['priority']] ?? 0);
+            $priority = (int) ($r[$map['priority']] ?? 100);
 
             $rawActive = trim((string) ($r[$map['is_active']] ?? '1'));
             $isActive = in_array(strtolower($rawActive), ['1', 'true', 'yes', 'y'], true) ? 1 : 0;
 
             Rule::create([
                 'tenant_id'       => $tenantId,
-                'created_by'      => $userId,
-                'updated_by'      => $userId,
+                'user_id'         => $userId,
                 'condition_field' => $conditionField,
                 'operator'        => $operator,
                 'value'           => $value,

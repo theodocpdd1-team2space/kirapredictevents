@@ -8,9 +8,7 @@ class Rule extends Model
 {
     protected $fillable = [
         'tenant_id',
-        'created_by',
-        'updated_by',
-
+        'user_id',
         'condition_field',
         'operator',
         'value',
@@ -31,14 +29,13 @@ class Rule extends Model
         return $this->belongsTo(Tenant::class);
     }
 
+    /**
+     * User pembuat rule.
+     * Pada tabel rules, pembuat rule disimpan pada kolom user_id.
+     */
     public function creator()
     {
-        return $this->belongsTo(User::class, 'created_by');
-    }
-
-    public function updater()
-    {
-        return $this->belongsTo(User::class, 'updated_by');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function isActive(): bool

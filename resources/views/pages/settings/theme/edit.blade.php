@@ -46,13 +46,13 @@
         </div>
       </label>
 
-      <label class="flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-700 p-4 opacity-50 cursor-not-allowed transition-colors">
+      <!-- <label class="flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-700 p-4 opacity-50 cursor-not-allowed transition-colors">
         <input type="radio" name="theme_mode" value="system" class="mt-1" disabled>
         <div>
           <div class="font-semibold text-slate-900 dark:text-white">System (Soon)</div>
           <div class="text-sm text-slate-500 dark:text-slate-400">Ikuti setting OS.</div>
         </div>
-      </label>
+      </label> -->
 
       <div class="pt-2 flex justify-end">
         <button class="rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors">

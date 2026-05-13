@@ -311,8 +311,6 @@ class EstimationController extends Controller
             $hoursPerDay = max(1, (int) ($estimation->event->hours_per_day ?? 1));
             $durationBlock = $this->durationBlockFromHoursPerDay($hoursPerDay);
 
-            $mult = $eventDays * $durationBlock;
-
             $byId = $estimation->details->keyBy('id');
 
             foreach (($data['items'] ?? []) as $row) {
@@ -366,9 +364,8 @@ class EstimationController extends Controller
                     'price'          => $unitPrice,
                     'unit'           => $row['unit'] ?? ($detail->unit ?? null),
                     'notes'          => $row['notes'] ?? ($detail->notes ?? null),
-                    'total'          => $unitPrice * $qty * $mult,
+                    'total'          => $unitPrice * $qty,
 
-                    // kalau item sebelumnya pernah dihapus, lalu qty diisi lagi, aktifkan kembali
                     'is_removed'     => false,
                     'removed_at'     => null,
                     'removed_by'     => null,
@@ -400,7 +397,7 @@ class EstimationController extends Controller
                     ? (int) $row['price']
                     : (int) $inv->price;
 
-                $lineTotal = $unitPrice * $qty * $mult;
+                $lineTotal = $unitPrice * $qty;
 
                 EstimationDetail::create([
                     'estimation_id'  => $estimation->id,
@@ -413,7 +410,6 @@ class EstimationController extends Controller
                     'price'          => $unitPrice,
                     'total'          => $lineTotal,
 
-                    // item baru tidak ada di original
                     'original_quantity' => 0,
                     'original_price'    => $unitPrice,
                     'original_total'    => 0,
@@ -441,7 +437,7 @@ class EstimationController extends Controller
                 }
 
                 $unitPrice = (int) ($row['price'] ?? 0);
-                $lineTotal = $unitPrice * $qty * $mult;
+                $lineTotal = $unitPrice * $qty;
 
                 EstimationDetail::create([
                     'estimation_id'  => $estimation->id,
@@ -454,7 +450,6 @@ class EstimationController extends Controller
                     'price'          => $unitPrice,
                     'total'          => $lineTotal,
 
-                    // item custom baru tidak ada di original
                     'original_quantity' => 0,
                     'original_price'    => $unitPrice,
                     'original_total'    => 0,

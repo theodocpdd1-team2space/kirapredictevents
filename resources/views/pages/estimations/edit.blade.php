@@ -12,7 +12,13 @@
   $eventDays   = max(1, (int)($estimation->event->event_days ?? 1));
   $hoursPerDay = max(1, (int)($estimation->event->hours_per_day ?? 1));
   $durationBlock = $hoursPerDay <= 4 ? 1 : ($hoursPerDay <= 8 ? 2 : 3);
-  $mult = $eventDays * $durationBlock;
+
+  /*
+   * Pada halaman revisi, total item dihitung dari qty × price.
+   * Multiplier durasi tidak dipakai lagi agar total tidak terhitung dobel,
+   * karena detail estimasi awal sudah menyimpan total final.
+   */
+  $mult = 1;
 
   $breakdown = $estimation->breakdown;
   if (is_string($breakdown)) $breakdown = json_decode($breakdown, true) ?: [];
@@ -42,7 +48,7 @@
     <p class="text-slate-600 dark:text-slate-400 mt-2">
       Edit quantity, unit price, ganti equipment langsung, tambah custom/sewa, dan simpan revision note.
       <span class="ml-2 text-xs text-slate-500 dark:text-slate-500">
-        Multiplier: {{ $eventDays }} day × block {{ $durationBlock }} = <b>{{ $mult }}</b>
+        Revision formula: <b>qty × price</b>
       </span>
     </p>
   </div>
@@ -247,7 +253,6 @@
           <div class="col-span-2 text-right">Price</div>
         </div>
 
-        {{-- seed 1 row (safe: will be disabled if empty on submit) --}}
         <div class="grid grid-cols-12 gap-2 items-center" data-new-row>
           <div class="col-span-6">
             <input name="new_items[0][equipment_name]" list="invList"
@@ -316,7 +321,6 @@
           <div class="col-span-2 text-right">Price</div>
         </div>
 
-        {{-- seed 1 row (safe: will be disabled if empty on submit) --}}
         <div class="grid grid-cols-12 gap-2 items-center" data-custom-row>
           <div class="col-span-6">
             <input name="custom_items[0][name]"
@@ -377,7 +381,7 @@
                     dark:border-slate-700/60 dark:bg-slate-950/30">
           <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Equipment Subtotal</div>
           <div class="mt-2 text-2xl font-bold text-slate-900 dark:text-white" id="sumEquipment">Rp 0</div>
-          <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">formula: Σ(qty × price × {{ $mult }})</div>
+          <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">formula: Σ(qty × price)</div>
         </div>
 
         <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2
@@ -427,7 +431,6 @@
 <script>
 (function(){
   const invMap = @json($invMap);
-  const mult = {{ (int)$mult }};
   const labor = {{ (int)$labor }};
   const transport = {{ (int)$transport }};
   const opPercent = {{ (float)$opPercent }};
@@ -490,7 +493,7 @@
         return;
       }
 
-      const line = q * p * mult;
+      const line = q * p;
       if (totalEl) totalEl.textContent = fmt(line);
 
       equipmentSum += line;
@@ -516,7 +519,7 @@
       }
 
       const p = toInt(price?.value);
-      if (name !== '' && q > 0) equipmentSum += (q * p * mult);
+      if (name !== '' && q > 0) equipmentSum += (q * p);
     });
 
     document.querySelectorAll('[data-custom-row]').forEach(row => {
@@ -528,7 +531,7 @@
       const q = toInt(qty?.value);
       const p = toInt(price?.value);
 
-      if (name !== '' && q > 0) equipmentSum += (q * p * mult);
+      if (name !== '' && q > 0) equipmentSum += (q * p);
     });
 
     return equipmentSum;
@@ -709,7 +712,6 @@
     });
   }
 
-  // submit sanitizer: disable empty seed rows so they don't validate
   const form = document.getElementById('reviseForm');
   if (form) {
     form.addEventListener('submit', () => {

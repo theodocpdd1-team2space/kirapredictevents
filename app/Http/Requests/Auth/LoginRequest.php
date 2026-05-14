@@ -49,6 +49,18 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        $user = Auth::user();
+
+        if ($user && $user->status !== 'active') {
+            Auth::logout();
+
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'email' => 'Akun Anda sedang nonaktif. Hubungi Owner untuk mengaktifkan kembali.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

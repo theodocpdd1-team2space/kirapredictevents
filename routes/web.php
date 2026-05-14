@@ -28,6 +28,9 @@ Route::get('/', function () {
 Route::get('/s/{token}', [EstimationShareController::class, 'show'])
     ->name('share.estimations.show');
 
+Route::get('/s/{token}/pdf', [EstimationShareController::class, 'pdf'])
+    ->name('share.estimations.pdf');
+
 /**
  * AUTH ONLY
  */

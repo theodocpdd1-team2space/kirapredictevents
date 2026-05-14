@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Estimation;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
 class EstimationShareController extends Controller
@@ -21,4 +22,19 @@ class EstimationShareController extends Controller
             'publicMode'  => true,
         ]);
     }
+
+    public function pdf(string $token)
+    {
+        $estimation = Estimation::with(['event', 'details'])
+            ->where('share_token', $token)
+            ->firstOrFail();
+
+        $mode = 'summary';
+
+        $pdf = Pdf::loadView('pages.estimations.pdf', compact('estimation', 'mode'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download('estimasi-ringkas-' . $estimation->id . '.pdf');
+    }
+
 }

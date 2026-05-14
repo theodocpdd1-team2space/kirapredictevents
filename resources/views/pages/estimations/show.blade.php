@@ -77,6 +77,10 @@
   $shareUrl = $estimation->share_token
     ? route('share.estimations.show', $estimation->share_token)
     : null;
+
+  $createdAtLabel = optional($estimation->created_at)
+    ? $estimation->created_at->copy()->timezone('Asia/Jakarta')->locale('id')->translatedFormat('d M Y, H:i') . ' WIB'
+    : '-';
 @endphp
 
 @section('content')
@@ -218,55 +222,58 @@
             </a>
           @endunless
 
-          {{-- Share dropdown --}}
-          <div class="relative" id="shareWrap">
-            <button type="button" id="shareBtn"
-                    class="h-10 inline-flex items-center gap-2 rounded-xl bg-slate-900 dark:bg-slate-800 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 dark:hover:bg-slate-700">
-              Share
-              <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="m6 9 6 6 6-6"/></svg>
-            </button>
+          {{-- Share actions --}}
+          <div class="w-full sm:w-auto">
+            <div class="grid grid-cols-1 sm:flex sm:flex-wrap items-stretch sm:items-center justify-start lg:justify-end gap-2">
+              @if($publicMode)
+                <a href="{{ route('share.estimations.pdf', $estimation->share_token) }}"
+                   class="h-10 inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">
+                  Download PDF
+                </a>
 
-            <div id="shareMenu"
-                 class="hidden absolute right-0 mt-2 w-64 origin-top-right rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg ring-1 ring-black ring-opacity-5 z-50 overflow-hidden">
-              <div class="py-1">
+                @if($shareUrl)
+                  <button type="button"
+                          id="copyShareLinkBtn"
+                          data-link="{{ $shareUrl }}"
+                          class="h-10 w-full sm:w-auto inline-flex items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 text-sm font-semibold text-blue-700 shadow-sm hover:bg-blue-100">
+                    Copy Link
+                  </button>
+                @endif
+              @else
                 <a href="{{ route('estimations.pdf', $estimation->id) }}?mode=detail"
-                   class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
+                   class="h-10 inline-flex items-center justify-center rounded-xl bg-slate-900 dark:bg-slate-800 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 dark:hover:bg-slate-700">
                   PDF Detail
                 </a>
 
                 <a href="{{ route('estimations.pdf', $estimation->id) }}?mode=summary"
-                   class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
+                   class="h-10 inline-flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800">
                   PDF Ringkas
                 </a>
 
-                @unless($publicMode)
-                  <div class="my-1 h-px bg-slate-200 dark:bg-slate-700"></div>
-
-                  @if(empty($estimation->share_token))
-                    <form method="POST" action="{{ route('estimations.shareToken', $estimation->id) }}">
-                      @csrf
-                      <button type="submit"
-                              class="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
-                        Generate Share Link
-                      </button>
-                    </form>
-                  @else
-                    <button type="button"
-                            id="copyShareLinkBtn"
-                            data-link="{{ $shareUrl }}"
-                            class="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
-                      Copy Share Link
+                @if(empty($estimation->share_token))
+                  <form method="POST" action="{{ route('estimations.shareToken', $estimation->id) }}" class="w-full sm:w-auto">
+                    @csrf
+                    <button type="submit"
+                            class="h-10 w-full sm:w-auto inline-flex items-center justify-center rounded-xl border border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 px-4 text-sm font-semibold text-blue-700 dark:text-blue-300 shadow-sm hover:bg-blue-100 dark:hover:bg-blue-500/20">
+                      Generate Link
                     </button>
-                  @endif
+                  </form>
+                @else
+                  <button type="button"
+                          id="copyShareLinkBtn"
+                          data-link="{{ $shareUrl }}"
+                          class="h-10 w-full sm:w-auto inline-flex items-center justify-center rounded-xl border border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 px-4 text-sm font-semibold text-blue-700 dark:text-blue-300 shadow-sm hover:bg-blue-100 dark:hover:bg-blue-500/20">
+                    Copy Link
+                  </button>
+                @endif
 
-                  @if(\Illuminate\Support\Facades\Route::has('estimations.wa'))
-                    <a href="{{ route('estimations.wa', $estimation->id) }}"
-                       class="flex items-center gap-2 px-4 py-2 text-sm text-green-600 hover:bg-green-50 dark:hover:bg-green-500/10">
-                      WhatsApp
-                    </a>
-                  @endif
-                @endunless
-              </div>
+                @if(\Illuminate\Support\Facades\Route::has('estimations.wa'))
+                  <a href="{{ route('estimations.wa', $estimation->id) }}"
+                     class="h-10 inline-flex items-center justify-center rounded-xl border border-green-200 dark:border-green-500/30 bg-green-50 dark:bg-green-500/10 px-4 text-sm font-semibold text-green-700 dark:text-green-300 shadow-sm hover:bg-green-100 dark:hover:bg-green-500/20">
+                    WhatsApp
+                  </a>
+                @endif
+              @endif
             </div>
           </div>
         </div>
@@ -294,7 +301,7 @@
         <div class="font-semibold text-slate-900 dark:text-white">#{{ $estimation->id }}</div>
         <div class="text-sm text-slate-500 dark:text-slate-400 mt-1">Created</div>
         <div class="text-sm font-medium text-slate-900 dark:text-white">
-          {{ optional($estimation->created_at)->format('Y-m-d H:i') }}
+          {{ $createdAtLabel }}
         </div>
       </div>
     </div>
@@ -342,16 +349,103 @@
         <p class="text-sm text-slate-500 dark:text-slate-400">{{ $displayDetails->count() }} items</p>
       </div>
 
-      <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+      {{-- Mobile equipment cards --}}
+      <div class="space-y-3 md:hidden">
+        @forelse($displayDetails as $d)
+          @php
+            $qty = $viewMode === 'original'
+              ? (int)($d->original_quantity ?? 0)
+              : (int)($d->quantity ?? 0);
+
+            $price = $viewMode === 'original'
+              ? (int)($d->original_price ?? $d->price ?? 0)
+              : (int)($d->price ?? 0);
+
+            $lineTotal = $viewMode === 'original'
+              ? (int)($d->original_total ?? 0)
+              : (int)($d->total ?? 0);
+
+            $isRemoved = (bool)($d->is_removed ?? false);
+          @endphp
+
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 p-4 {{ $viewMode === 'original' && $isRemoved ? 'opacity-75' : '' }}">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="font-semibold leading-snug text-slate-900 dark:text-white break-words">
+                  {{ $d->equipment_name }}
+                </div>
+
+                @if($viewMode === 'original' && $isRemoved)
+                  <span class="mt-2 w-fit inline-flex items-center rounded-full bg-red-50 dark:bg-red-500/10 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20">
+                    Removed in final
+                  </span>
+                @endif
+              </div>
+
+              @unless($publicMode)
+                @if((int)$d->shortage > 0)
+                  <span class="shrink-0 inline-flex rounded-full bg-red-50 dark:bg-red-500/10 px-2.5 py-1 text-xs font-semibold text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20">
+                    Short {{ (int)$d->shortage }}
+                  </span>
+                @else
+                  <span class="shrink-0 inline-flex rounded-full bg-green-50 dark:bg-green-500/10 px-2.5 py-1 text-xs font-semibold text-green-700 dark:text-green-400 border border-green-200 dark:border-green-500/20">
+                    Ready
+                  </span>
+                @endif
+              @endunless
+            </div>
+
+            @if($publicMode)
+              <div class="mt-4 rounded-xl bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 p-3">
+                <div class="text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400">Kebutuhan</div>
+                <div class="mt-1 text-base font-semibold text-slate-900 dark:text-white">{{ $qty }} unit</div>
+              </div>
+            @else
+              <div class="mt-4 grid grid-cols-3 gap-2 text-center">
+                <div class="rounded-xl bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 p-3">
+                  <div class="text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400">Need</div>
+                  <div class="mt-1 text-base font-semibold text-slate-900 dark:text-white">{{ $qty }}</div>
+                </div>
+
+                <div class="rounded-xl bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 p-3">
+                  <div class="text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400">Stock</div>
+                  <div class="mt-1 text-base font-semibold text-slate-900 dark:text-white">{{ (int)$d->available }}</div>
+                </div>
+
+                <div class="rounded-xl bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 p-3">
+                  <div class="text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400">Short</div>
+                  <div class="mt-1 text-base font-semibold {{ (int)$d->shortage > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white' }}">
+                    {{ (int)$d->shortage }}
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 dark:border-slate-700 pt-3 text-sm">
+                <span class="text-slate-500 dark:text-slate-400">Unit Rp {{ number_format($price,0,',','.') }}</span>
+                <span class="font-semibold text-slate-900 dark:text-white">Rp {{ number_format($lineTotal,0,',','.') }}</span>
+              </div>
+            @endif
+          </div>
+        @empty
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 p-6 text-center text-sm text-slate-500 dark:text-slate-400">
+            No equipment items.
+          </div>
+        @endforelse
+      </div>
+
+      {{-- Desktop equipment table --}}
+      <div class="hidden md:block overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
         <table class="w-full text-sm">
           <thead class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
             <tr>
               <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Equipment</th>
               <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Need</th>
-              <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Available</th>
-              <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Shortage</th>
-              <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Unit Price</th>
-              <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Total</th>
+              @unless($publicMode)
+                <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Available</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Shortage</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Unit Price</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Total</th>
+              @endunless
             </tr>
           </thead>
 
@@ -387,18 +481,20 @@
                 </td>
 
                 <td class="px-4 py-3 text-right text-slate-900 dark:text-slate-300">{{ $qty }}</td>
-                <td class="px-4 py-3 text-right text-slate-900 dark:text-slate-300">{{ (int)$d->available }}</td>
-                <td class="px-4 py-3 text-right">
-                  @if((int)$d->shortage > 0)
-                    <span class="inline-flex rounded-full bg-red-50 dark:bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20">
-                      {{ (int)$d->shortage }}
-                    </span>
-                  @else
-                    <span class="text-slate-500 dark:text-slate-400">0</span>
-                  @endif
-                </td>
-                <td class="px-4 py-3 text-right text-slate-900 dark:text-slate-300">Rp {{ number_format($price,0,',','.') }}</td>
-                <td class="px-4 py-3 text-right font-semibold text-slate-900 dark:text-white">Rp {{ number_format($lineTotal,0,',','.') }}</td>
+                @unless($publicMode)
+                  <td class="px-4 py-3 text-right text-slate-900 dark:text-slate-300">{{ (int)$d->available }}</td>
+                  <td class="px-4 py-3 text-right">
+                    @if((int)$d->shortage > 0)
+                      <span class="inline-flex rounded-full bg-red-50 dark:bg-red-500/10 px-2 py-1 text-xs font-semibold text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20">
+                        {{ (int)$d->shortage }}
+                      </span>
+                    @else
+                      <span class="text-slate-500 dark:text-slate-400">0</span>
+                    @endif
+                  </td>
+                  <td class="px-4 py-3 text-right text-slate-900 dark:text-slate-300">Rp {{ number_format($price,0,',','.') }}</td>
+                  <td class="px-4 py-3 text-right font-semibold text-slate-900 dark:text-white">Rp {{ number_format($lineTotal,0,',','.') }}</td>
+                @endunless
               </tr>
             @empty
               <tr>
@@ -420,37 +516,40 @@
       </div>
 
       <div class="rounded-xl border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/50 p-5 space-y-3">
-        <div class="flex items-center justify-between text-sm">
-          <span class="text-slate-600 dark:text-slate-400">Equipment</span>
-          <span class="font-semibold text-slate-900 dark:text-white">Rp {{ number_format((int)($b['equipment'] ?? 0),0,',','.') }}</span>
-        </div>
-
-        <div class="flex items-center justify-between text-sm">
-          <span class="text-slate-600 dark:text-slate-400">Labor Crew</span>
-          <span class="font-semibold text-slate-900 dark:text-white">Rp {{ number_format((int)($b['labor'] ?? 0),0,',','.') }}</span>
-        </div>
-
-        <div class="flex items-center justify-between text-sm">
-          <span class="text-slate-600 dark:text-slate-400">Transportation</span>
-          <span class="font-semibold text-slate-900 dark:text-white">Rp {{ number_format((int)($b['transport'] ?? 0),0,',','.') }}</span>
-        </div>
-
-        <div class="flex items-center justify-between text-sm">
-          <span class="text-slate-600 dark:text-slate-400">Operational</span>
-          <span class="font-semibold text-slate-900 dark:text-white">Rp {{ number_format((int)($b['operational'] ?? 0),0,',','.') }}</span>
-        </div>
-
-        @if(isset($b['markup']))
+        @unless($publicMode)
           <div class="flex items-center justify-between text-sm">
-            <span class="text-slate-600 dark:text-slate-400">Markup</span>
-            <span class="font-semibold text-slate-900 dark:text-white">Rp {{ number_format((int)($b['markup'] ?? 0),0,',','.') }}</span>
+            <span class="text-slate-600 dark:text-slate-400">Equipment</span>
+            <span class="font-semibold text-slate-900 dark:text-white">Rp {{ number_format((int)($b['equipment'] ?? 0),0,',','.') }}</span>
           </div>
-        @endif
 
-        <div class="pt-3 mt-3 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
-          <span class="text-slate-900 dark:text-white font-semibold">Total</span>
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-slate-600 dark:text-slate-400">Labor Crew</span>
+            <span class="font-semibold text-slate-900 dark:text-white">Rp {{ number_format((int)($b['labor'] ?? 0),0,',','.') }}</span>
+          </div>
+
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-slate-600 dark:text-slate-400">Transportation</span>
+            <span class="font-semibold text-slate-900 dark:text-white">Rp {{ number_format((int)($b['transport'] ?? 0),0,',','.') }}</span>
+          </div>
+
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-slate-600 dark:text-slate-400">Operational</span>
+            <span class="font-semibold text-slate-900 dark:text-white">Rp {{ number_format((int)($b['operational'] ?? 0),0,',','.') }}</span>
+          </div>
+
+          @if(isset($b['markup']))
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-slate-600 dark:text-slate-400">Markup</span>
+              <span class="font-semibold text-slate-900 dark:text-white">Rp {{ number_format((int)($b['markup'] ?? 0),0,',','.') }}</span>
+            </div>
+          @endif
+        @endunless
+
+        <div class="{{ $publicMode ? '' : 'pt-3 mt-3 border-t border-slate-200 dark:border-slate-700' }} flex items-center justify-between">
+          <span class="text-slate-900 dark:text-white font-semibold">{{ $publicMode ? 'Total Estimasi' : 'Total' }}</span>
           <span class="text-slate-900 dark:text-white font-semibold text-lg">Rp {{ number_format((int)($estimation->total_cost ?? 0),0,',','.') }}</span>
         </div>
+
       </div>
     </div>
   </div>

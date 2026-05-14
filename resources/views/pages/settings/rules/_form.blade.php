@@ -1,6 +1,6 @@
 @php
   $isEdit = isset($rule);
-  $actionPretty = old('action_raw');
+  $actionPretty = old('action');
   if ($actionPretty === null && $isEdit) {
       $actionPretty = json_encode($rule->action, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES);
   }
@@ -52,9 +52,9 @@
 
   <div class="md:col-span-2">
     <label class="block text-sm font-semibold text-slate-900 dark:text-white mb-2 transition-colors">Action (JSON Array)</label>
-    <textarea name="action_raw" rows="10"
+<textarea name="action" rows="10"
               class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/50 px-4 py-3 text-sm font-mono text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:focus:ring-blue-500/30 focus:border-blue-500 transition-colors">{{ $actionPretty }}</textarea>
     <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 transition-colors">Format: [{"type":"ADD_EQUIPMENT","name":"Speaker Aktif","qty":2}]</p>
-    @error('action_raw') <p class="text-xs text-red-600 dark:text-red-400 mt-2">{{ $message }}</p> @enderror
+    @error('action') <p class="text-xs text-red-600 dark:text-red-400 mt-2">{{ $message }}</p> @enderror
   </div>
 </div>

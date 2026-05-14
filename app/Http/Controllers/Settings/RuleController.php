@@ -66,7 +66,7 @@ class RuleController extends Controller
             'condition_field' => ['required', 'string', 'max:100'],
             'operator'        => ['required', 'string', 'max:20'],
             'value'           => ['required', 'string', 'max:255'],
-            'action'          => ['nullable'],
+		'action'          => ['required', 'string'],
             'category'        => ['nullable', 'string', 'max:100'],
             'priority'        => ['required', 'integer', 'min:0', 'max:9999'],
             'is_active'       => ['nullable'],
@@ -238,28 +238,26 @@ class RuleController extends Controller
             ->with('success', "Import selesai. Berhasil: {$ok}, Dilewati: {$skip}");
     }
 
-    private function normalizeAction($action)
-    {
-        if ($action === null) {
-            return null;
-        }
-
-        if (is_array($action)) {
-            return $action;
-        }
-
-        $action = trim((string) $action);
-
-        if ($action === '') {
-            return null;
-        }
-
-        $decoded = json_decode($action, true);
-
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            return $decoded;
-        }
-
-        return null;
+private function normalizeAction($action): array
+{
+    if (is_array($action)) {
+        return $action;
     }
+
+    $action = trim((string) $action);
+
+    if ($action === '') {
+        abort(422, 'Action JSON wajib diisi.');
+    }
+
+    $decoded = json_decode($action, true);
+
+    if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
+        abort(422, 'Action harus berupa JSON array yang valid.');
+    }
+
+    return $decoded;
+}
+
+
 }

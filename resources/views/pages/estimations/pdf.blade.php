@@ -5,24 +5,22 @@
   <title>{{ ($eventName ?? 'Estimation') }} - Estimation</title>
 
   <style>
-    /* Menggunakan margin yang proporsional untuk ruang napas */
     @page { margin: 40px 50px; }
 
     body {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 12px; /* Ukuran font ideal, tidak kekecilan */
+      font-size: 12px;
       color: #1f2937;
       line-height: 1.5;
     }
 
     .text-blue { color: #2563eb; }
     .bg-light-blue { background-color: #eff6ff; }
-    
+
     .muted { color: #6b7280; }
     .strong { font-weight: 700; color: #111827; }
     .num { text-align: right; white-space: nowrap; }
 
-    /* Header & Title */
     .header-table {
       width: 100%;
       border-collapse: collapse;
@@ -34,7 +32,7 @@
     .logo-text {
       font-size: 42px;
       font-weight: 800;
-      color: #2563eb; /* Biru Saldo/Wave */
+      color: #2563eb;
       letter-spacing: -0.03em;
       line-height: 1;
       margin: 0;
@@ -52,7 +50,6 @@
       color: #6b7280;
     }
 
-    /* Event Info Block */
     .info-table {
       width: 100%;
       border-collapse: collapse;
@@ -80,7 +77,6 @@
       padding-right: 20px;
     }
 
-    /* Main Data Table (Gaya Referensi Saldo) */
     .table {
       width: 100%;
       border-collapse: collapse;
@@ -88,7 +84,7 @@
     }
 
     .table th {
-      background-color: #2563eb; /* Header Biru Solid */
+      background-color: #2563eb;
       color: #ffffff;
       text-align: left;
       font-size: 11px;
@@ -105,7 +101,6 @@
       font-size: 12px;
     }
 
-    /* Khusus Tampilan Mode Summary */
     .summary-desc-title {
       font-weight: 700;
       color: #111827;
@@ -119,7 +114,6 @@
       line-height: 1.6;
     }
 
-    /* Totals & Notes Layout */
     .bottom-layout {
       width: 100%;
       border-collapse: collapse;
@@ -145,7 +139,7 @@
       font-weight: 800;
       color: #111827;
       background-color: #f8fafc;
-      border-top: 2px solid #2563eb; /* Garis aksen biru di atas total */
+      border-top: 2px solid #2563eb;
     }
 
     .notes-box {
@@ -155,7 +149,6 @@
       line-height: 1.6;
     }
 
-    /* Signatures */
     .signature-table {
       width: 100%;
       border-collapse: collapse;
@@ -177,13 +170,12 @@
       font-size: 13px;
     }
 
-    /* Footer (Gaya Referensi Wave) */
     .footer-block {
-      background-color: #eff6ff; /* Biru sangat muda */
+      background-color: #eff6ff;
       padding: 15px;
       text-align: center;
       position: absolute;
-      bottom: -40px; /* Menempel ke bawah margin */
+      bottom: -40px;
       left: -50px;
       right: -50px;
       font-size: 10px;
@@ -210,12 +202,123 @@
 
   $details = $estimation->details ?? collect();
 
-  // Membuang item dengan qty 0
   $visibleDetails = $details->filter(function ($d) {
       return (int)($d->quantity ?? 0) > 0;
   })->values();
 
-  // Setup Keywords Ringkasan
+  /*
+   * Bahasa PDF.
+   * Coba ambil dari beberapa kemungkinan key setting:
+   * - pdf_language
+   * - language
+   * - locale
+   *
+   * Value yang didukung:
+   * id / indonesia / bahasa indonesia
+   * en / english
+   */
+  $pdfLanguage = \App\Models\Setting::getValue('pdf_language', null);
+
+  if (!$pdfLanguage) {
+      $pdfLanguage = \App\Models\Setting::getValue('language', null);
+  }
+
+  if (!$pdfLanguage) {
+      $pdfLanguage = \App\Models\Setting::getValue('locale', null);
+  }
+
+  $pdfLanguage = strtolower(trim((string)($pdfLanguage ?? 'id')));
+
+  if (in_array($pdfLanguage, ['english', 'en-us', 'en_us', 'eng'], true)) {
+      $pdfLanguage = 'en';
+  }
+
+  if (in_array($pdfLanguage, ['indonesia', 'bahasa indonesia', 'bahasa_indonesia', 'id-id', 'id_id', 'indo'], true)) {
+      $pdfLanguage = 'id';
+  }
+
+  if (!in_array($pdfLanguage, ['id', 'en'], true)) {
+      $pdfLanguage = 'id';
+  }
+
+  $t = $pdfLanguage === 'en'
+      ? [
+          'document_title_summary' => 'Quotation',
+          'document_title_detail' => 'Estimation',
+          'ref_number' => 'Ref Number:',
+          'date_issued' => 'Date Issued:',
+          'event_details' => 'Event Details',
+          'location' => 'Location',
+          'duration' => 'Duration',
+          'scale_service' => 'Scale & Service',
+          'day' => 'Day(s)',
+          'description' => 'Description',
+          'qty' => 'Qty',
+          'amount' => 'Amount',
+          'rate' => 'Rate',
+          'package_title' => 'Sound System & Multimedia Package',
+          'for' => 'for',
+          'main_spec' => 'Main Specification:',
+          'support_text' => 'including cables, power, accessories, technical support, setup, and operational crew as required',
+          'duration_note' => 'Operational duration',
+          'hours_day' => 'hours/day',
+          'technical_included' => 'This quotation includes technical service fees.',
+          'payment_notes_title' => 'Payment Instruction & Notes',
+          'payment_notes' => 'This price is an initial quotation based on the event requirements discussion. The price may be adjusted if there are changes in duration, stage layout, or additional equipment on site.',
+          'balance_due' => 'Balance Due:',
+          'system_notes' => 'System Notes',
+          'system_notes_detail' => 'The item details above are automatically generated by the KIRA system. Stock availability and final prices will be reconfirmed when preparing the official invoice.',
+          'subtotal_equipment' => 'Subtotal Equipment',
+          'labor_crew' => 'Labor & Crew',
+          'transportation' => 'Transportation',
+          'operational_fee' => 'Operational Fee',
+          'markup' => 'Margin / Markup',
+          'total_amount' => 'Total Amount:',
+          'prepared_by' => 'Prepared by',
+          'acknowledged_by' => 'Acknowledged by',
+          'representative' => 'Representative',
+          'authorized_client' => 'Authorized Client',
+          'footer' => 'This document was securely generated by KIRA Event Multimedia Decision Support System.',
+        ]
+      : [
+          'document_title_summary' => 'Penawaran',
+          'document_title_detail' => 'Estimasi',
+          'ref_number' => 'Nomor Ref:',
+          'date_issued' => 'Tanggal:',
+          'event_details' => 'Detail Acara',
+          'location' => 'Lokasi',
+          'duration' => 'Durasi',
+          'scale_service' => 'Skala & Layanan',
+          'day' => 'Hari',
+          'description' => 'Deskripsi',
+          'qty' => 'Qty',
+          'amount' => 'Jumlah',
+          'rate' => 'Harga',
+          'package_title' => 'Paket Sound System & Multimedia',
+          'for' => 'untuk',
+          'main_spec' => 'Spesifikasi Utama:',
+          'support_text' => 'termasuk kabel, power, aksesoris, teknis pendukung, setup, dan operasional crew sesuai kebutuhan',
+          'duration_note' => 'Durasi operasional',
+          'hours_day' => 'jam/hari',
+          'technical_included' => 'Penawaran sudah termasuk biaya teknis.',
+          'payment_notes_title' => 'Catatan Pembayaran & Penawaran',
+          'payment_notes' => 'Harga ini adalah estimasi awal berdasarkan diskusi kebutuhan event. Harga dapat disesuaikan kembali apabila terdapat perubahan durasi, layout panggung, atau tambahan equipment di lokasi acara.',
+          'balance_due' => 'Total Tagihan:',
+          'system_notes' => 'Catatan Sistem',
+          'system_notes_detail' => 'Rincian item di atas dihasilkan otomatis oleh sistem KIRA. Ketersediaan stok dan harga final akan dikonfirmasi ulang pada saat penyusunan invoice resmi.',
+          'subtotal_equipment' => 'Subtotal Peralatan',
+          'labor_crew' => 'Tenaga Kerja & Crew',
+          'transportation' => 'Transportasi',
+          'operational_fee' => 'Biaya Operasional',
+          'markup' => 'Margin / Markup',
+          'total_amount' => 'Total:',
+          'prepared_by' => 'Disiapkan oleh',
+          'acknowledged_by' => 'Disetujui oleh',
+          'representative' => 'Perwakilan',
+          'authorized_client' => 'Client',
+          'footer' => 'Dokumen ini dibuat secara otomatis oleh KIRA Event Multimedia Decision Support System.',
+        ];
+
   $importantKeywords = [
       'Mixer', 'Speaker Line Array', 'Speaker Aktif', 'Speaker Passive',
       'Subwoofer', 'Mic Wireless', 'Mic Gooseneck', 'Mic Drum', 'Keyboard',
@@ -227,14 +330,26 @@
       ->filter(function ($d) use ($importantKeywords) {
           $name = (string)($d->equipment_name ?? '');
           foreach ($importantKeywords as $keyword) {
-              if (stripos($name, $keyword) !== false) { return true; }
+              if (stripos($name, $keyword) !== false) {
+                  return true;
+              }
           }
           return false;
       })
-      ->pluck('equipment_name')->unique()->take(12)->values()->all();
+      ->pluck('equipment_name')
+      ->unique()
+      ->take(12)
+      ->values()
+      ->all();
 
   if (count($importantEquipment) === 0) {
-      $importantEquipment = $visibleDetails->pluck('equipment_name')->filter()->unique()->take(10)->values()->all();
+      $importantEquipment = $visibleDetails
+          ->pluck('equipment_name')
+          ->filter()
+          ->unique()
+          ->take(10)
+          ->values()
+          ->all();
   }
 
   $equipmentInline = implode(', ', $importantEquipment);
@@ -248,10 +363,13 @@
   $eventDays = (int)($event->event_days ?? 1);
   $hoursPerDay = (int)($event->hours_per_day ?? 1);
 
-  $summaryDescription = 'Paket Sound System & Multimedia';
-  if (!empty($event->event_type)) { $summaryDescription .= ' untuk ' . $eventTypeLabel; }
-  
-  $supportText = 'termasuk kabel, power, aksesoris, teknis pendukung, setup, dan operasional crew sesuai kebutuhan';
+  $summaryDescription = $t['package_title'];
+
+  if (!empty($event->event_type)) {
+      $summaryDescription .= ' ' . $t['for'] . ' ' . $eventTypeLabel;
+  }
+
+  $supportText = $t['support_text'];
 @endphp
 
   {{-- TOP HEADER --}}
@@ -266,15 +384,17 @@
         <div class="meta-text" style="margin-top: 5px;">{{ $bizTagline }}</div>
       </td>
       <td style="width: 50%; text-align: right;">
-        <div class="doc-title">{{ $mode === 'summary' ? 'Quotation' : 'Estimation' }}</div>
-        
+        <div class="doc-title">
+          {{ $mode === 'summary' ? $t['document_title_summary'] : $t['document_title_detail'] }}
+        </div>
+
         <table style="width: 100%; margin-top: 10px;">
           <tr>
-            <td style="text-align: right; padding-right: 15px;" class="meta-text">Ref Number:</td>
+            <td style="text-align: right; padding-right: 15px;" class="meta-text">{{ $t['ref_number'] }}</td>
             <td style="text-align: right; width: 100px;" class="strong">#{{ str_pad($estimation->id, 5, '0', STR_PAD_LEFT) }}</td>
           </tr>
           <tr>
-            <td style="text-align: right; padding-right: 15px;" class="meta-text">Date Issued:</td>
+            <td style="text-align: right; padding-right: 15px;" class="meta-text">{{ $t['date_issued'] }}</td>
             <td style="text-align: right;" class="strong">{{ optional($estimation->created_at)->format('M d, Y') }}</td>
           </tr>
         </table>
@@ -284,21 +404,21 @@
 
   {{-- EVENT INFORMATION --}}
   <div style="margin-bottom: 25px;">
-    <div class="info-label text-blue">Event Details</div>
+    <div class="info-label text-blue">{{ $t['event_details'] }}</div>
     <div style="font-size: 18px; font-weight: 700; color: #111827; margin-bottom: 15px;">{{ $eventNameLocal }}</div>
-    
+
     <table class="info-table">
       <tr>
         <td>
-          <div class="info-label">Location</div>
+          <div class="info-label">{{ $t['location'] }}</div>
           <div class="info-value">{{ $locationLabel }}</div>
         </td>
         <td>
-          <div class="info-label">Duration</div>
-          <div class="info-value">{{ $eventDays }} Day(s)</div>
+          <div class="info-label">{{ $t['duration'] }}</div>
+          <div class="info-value">{{ $eventDays }} {{ $t['day'] }}</div>
         </td>
         <td>
-          <div class="info-label">Scale & Service</div>
+          <div class="info-label">{{ $t['scale_service'] }}</div>
           <div class="info-value">{{ number_format($participants) }} Pax &mdash; {{ $serviceLevelLabel }}</div>
         </td>
       </tr>
@@ -310,9 +430,9 @@
     <table class="table">
       <thead>
         <tr>
-          <th style="width: 60%;">Description</th>
-          <th class="num" style="width: 15%;">Qty</th>
-          <th class="num" style="width: 25%;">Amount</th>
+          <th style="width: 60%;">{{ $t['description'] }}</th>
+          <th class="num" style="width: 15%;">{{ $t['qty'] }}</th>
+          <th class="num" style="width: 25%;">{{ $t['amount'] }}</th>
         </tr>
       </thead>
       <tbody>
@@ -320,14 +440,17 @@
           <td>
             <div class="summary-desc-title">{{ $summaryDescription }}</div>
             <div class="summary-details">
-              <strong>Spesifikasi Utama:</strong> 
+              <strong>{{ $t['main_spec'] }}</strong>
               @if(!empty($equipmentInline))
                 {{ $equipmentInline }}@if($hasMoreEquipment), {{ $supportText }}@endif.
               @else
-                Paket sound system lengkap, {{ $supportText }}.
+                {{ $t['package_title'] }}, {{ $supportText }}.
               @endif
               <br><br>
-              <em>*Durasi operasional {{ $hoursPerDay }} jam/hari. Penawaran sudah termasuk biaya teknis.</em>
+              <em>
+                *{{ $t['duration_note'] }} {{ $hoursPerDay }} {{ $t['hours_day'] }}.
+                {{ $t['technical_included'] }}
+              </em>
             </div>
           </td>
           <td class="num strong" style="font-size: 14px;">1 Lot</td>
@@ -341,13 +464,13 @@
     <table class="bottom-layout">
       <tr>
         <td style="width: 60%;" class="notes-box">
-          <div class="strong" style="color: #111827; margin-bottom: 5px;">Payment Instruction & Notes</div>
-          Harga ini adalah estimasi awal (Quotation) berdasarkan diskusi kebutuhan event. Harga dapat disesuaikan kembali apabila terdapat perubahan durasi, layout panggung, atau tambahan equipment di lokasi acara.
+          <div class="strong" style="color: #111827; margin-bottom: 5px;">{{ $t['payment_notes_title'] }}</div>
+          {{ $t['payment_notes'] }}
         </td>
         <td style="width: 40%;">
           <table class="totals-table">
             <tr class="total-row">
-              <td>Balance Due:</td>
+              <td>{{ $t['balance_due'] }}</td>
               <td class="num text-blue">Rp {{ number_format((int)($estimation->total_cost ?? 0),0,',','.') }}</td>
             </tr>
           </table>
@@ -360,10 +483,10 @@
     <table class="table">
       <thead>
         <tr>
-          <th style="width: 45%;">Description</th>
-          <th class="num" style="width: 10%;">Qty</th>
-          <th class="num" style="width: 20%;">Rate</th>
-          <th class="num" style="width: 25%;">Amount</th>
+          <th style="width: 45%;">{{ $t['description'] }}</th>
+          <th class="num" style="width: 10%;">{{ $t['qty'] }}</th>
+          <th class="num" style="width: 20%;">{{ $t['rate'] }}</th>
+          <th class="num" style="width: 25%;">{{ $t['amount'] }}</th>
         </tr>
       </thead>
       <tbody>
@@ -381,35 +504,35 @@
     <table class="bottom-layout">
       <tr>
         <td style="width: 55%;" class="notes-box">
-          <div class="strong" style="color: #111827; margin-bottom: 5px;">System Notes</div>
-          Rincian item di atas di-generate otomatis oleh sistem KIRA. Ketersediaan stok dan harga final akan dikonfirmasi ulang pada saat penyusunan invoice resmi.
+          <div class="strong" style="color: #111827; margin-bottom: 5px;">{{ $t['system_notes'] }}</div>
+          {{ $t['system_notes_detail'] }}
         </td>
         <td style="width: 45%;">
           <table class="totals-table">
             <tr>
-              <td class="muted">Subtotal Equipment</td>
+              <td class="muted">{{ $t['subtotal_equipment'] }}</td>
               <td class="num strong">Rp {{ number_format((int)($b['equipment'] ?? 0),0,',','.') }}</td>
             </tr>
             <tr>
-              <td class="muted">Labor & Crew</td>
+              <td class="muted">{{ $t['labor_crew'] }}</td>
               <td class="num strong">Rp {{ number_format((int)($b['labor'] ?? 0),0,',','.') }}</td>
             </tr>
             <tr>
-              <td class="muted">Transportation</td>
+              <td class="muted">{{ $t['transportation'] }}</td>
               <td class="num strong">Rp {{ number_format((int)($b['transport'] ?? 0),0,',','.') }}</td>
             </tr>
             <tr>
-              <td class="muted">Operational Fee</td>
+              <td class="muted">{{ $t['operational_fee'] }}</td>
               <td class="num strong">Rp {{ number_format((int)($b['operational'] ?? 0),0,',','.') }}</td>
             </tr>
             @if(isset($b['markup']))
               <tr>
-                <td class="muted">Margin / Markup</td>
+                <td class="muted">{{ $t['markup'] }}</td>
                 <td class="num strong">Rp {{ number_format((int)($b['markup'] ?? 0),0,',','.') }}</td>
               </tr>
             @endif
             <tr class="total-row">
-              <td>Total Amount:</td>
+              <td>{{ $t['total_amount'] }}</td>
               <td class="num text-blue">Rp {{ number_format((int)($estimation->total_cost ?? 0),0,',','.') }}</td>
             </tr>
           </table>
@@ -422,19 +545,19 @@
   <table class="signature-table">
     <tr>
       <td>
-        <div class="muted" style="font-size: 11px;">Prepared by</div>
-        <div class="signature-line">{{ $bizName }} Representative</div>
+        <div class="muted" style="font-size: 11px;">{{ $t['prepared_by'] }}</div>
+        <div class="signature-line">{{ $bizName }} {{ $t['representative'] }}</div>
       </td>
       <td style="text-align: right;">
-        <div class="muted" style="font-size: 11px; padding-right: 25px;">Acknowledged by</div>
-        <div class="signature-line" style="margin-left: auto; margin-right: 0;">Authorized Client</div>
+        <div class="muted" style="font-size: 11px; padding-right: 25px;">{{ $t['acknowledged_by'] }}</div>
+        <div class="signature-line" style="margin-left: auto; margin-right: 0;">{{ $t['authorized_client'] }}</div>
       </td>
     </tr>
   </table>
 
-  {{-- BLUE FOOTER BLOCK (Gaya Referensi Wave) --}}
+  {{-- FOOTER --}}
   <div class="footer-block">
-    <strong class="text-blue">{{ $bizName }}</strong> &mdash; This document was securely generated by KIRA Event Multimedia Decision Support System.
+    <strong class="text-blue">{{ $bizName }}</strong> &mdash; {{ $t['footer'] }}
   </div>
 
 </body>

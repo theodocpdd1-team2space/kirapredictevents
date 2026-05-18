@@ -17,9 +17,6 @@
 
   $allDetails = $estimation->details ?? collect();
 
-  // ✅ FINAL: tampilkan item aktif saja.
-  // ✅ ORIGINAL: tampilkan item yang memang ada di estimasi awal saja,
-  // termasuk yang sekarang sudah dihapus pada revisi.
   if ($viewMode === 'original') {
       $displayDetails = $allDetails->filter(function ($d) {
           return (int)($d->original_quantity ?? 0) > 0
@@ -165,7 +162,6 @@
     <div class="no-print w-full lg:w-auto">
       <div class="flex flex-col gap-3">
 
-        {{-- Owner actions --}}
         @if($isOwner)
           <div class="flex flex-wrap items-center justify-start lg:justify-end gap-2">
             <form method="POST" action="{{ route('estimations.status', $estimation->id) }}">
@@ -208,7 +204,6 @@
           </div>
         @endif
 
-        {{-- Secondary --}}
         <div class="flex flex-wrap items-center justify-start lg:justify-end gap-2">
           @unless($publicMode)
             <a href="{{ route('estimations.index') }}"
@@ -222,7 +217,6 @@
             </a>
           @endunless
 
-          {{-- Share actions --}}
           <div class="w-full sm:w-auto">
             <div class="grid grid-cols-1 sm:flex sm:flex-wrap items-stretch sm:items-center justify-start lg:justify-end gap-2">
               @if($publicMode)
@@ -282,9 +276,8 @@
   </div>
 
   {{-- INVOICE CARD --}}
-  <div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+  <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden dark:border-slate-800 dark:bg-slate-900/70">
 
-    {{-- Invoice head --}}
     <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between gap-6">
       <div class="flex items-center gap-3">
         <div class="h-11 w-11 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden">
@@ -308,22 +301,22 @@
 
     {{-- Event summary --}}
     <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="rounded-xl border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/50 p-4">
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700/50 dark:bg-slate-950/40">
         <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Event Type</div>
         <div class="mt-1 font-semibold text-slate-900 dark:text-white">{{ ucfirst($estimation->event->event_type ?? '-') }}</div>
       </div>
 
-      <div class="rounded-xl border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/50 p-4">
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700/50 dark:bg-slate-950/40">
         <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Participants</div>
         <div class="mt-1 font-semibold text-slate-900 dark:text-white">{{ number_format($estimation->event->participants ?? 0) }}</div>
       </div>
 
-      <div class="rounded-xl border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/50 p-4">
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700/50 dark:bg-slate-950/40">
         <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Location</div>
         <div class="mt-1 font-semibold text-slate-900 dark:text-white">{{ ucfirst($estimation->event->location ?? '-') }}</div>
       </div>
 
-      <div class="rounded-xl border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/50 p-4">
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700/50 dark:bg-slate-950/40">
         <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Duration</div>
         <div class="mt-1 font-semibold text-slate-900 dark:text-white">
           {{ (int)($estimation->event->event_days ?? 1) }} day(s) × {{ (int)($estimation->event->hours_per_day ?? 1) }} h/day
@@ -331,12 +324,12 @@
         </div>
       </div>
 
-      <div class="rounded-xl border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/50 p-4">
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700/50 dark:bg-slate-950/40">
         <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Service Level</div>
         <div class="mt-1 font-semibold text-slate-900 dark:text-white">{{ ucfirst($estimation->event->service_level ?? '-') }}</div>
       </div>
 
-      <div class="rounded-xl border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/50 p-4">
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700/50 dark:bg-slate-950/40">
         <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Special Requirements</div>
         <div class="mt-1 text-sm text-slate-900 dark:text-white">{{ $estimation->event->special_requirement ?: '-' }}</div>
       </div>
@@ -368,7 +361,7 @@
             $isRemoved = (bool)($d->is_removed ?? false);
           @endphp
 
-          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 p-4 {{ $viewMode === 'original' && $isRemoved ? 'opacity-75' : '' }}">
+          <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700/70 dark:bg-slate-950/60 {{ $viewMode === 'original' && $isRemoved ? 'opacity-75' : '' }}">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
                 <div class="font-semibold leading-snug text-slate-900 dark:text-white break-words">
@@ -376,7 +369,7 @@
                 </div>
 
                 @if($viewMode === 'original' && $isRemoved)
-                  <span class="mt-2 w-fit inline-flex items-center rounded-full bg-red-50 dark:bg-red-500/10 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20">
+                  <span class="mt-2 w-fit inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700 border border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20">
                     Removed in final
                   </span>
                 @endif
@@ -384,11 +377,11 @@
 
               @unless($publicMode)
                 @if((int)$d->shortage > 0)
-                  <span class="shrink-0 inline-flex rounded-full bg-red-50 dark:bg-red-500/10 px-2.5 py-1 text-xs font-semibold text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20">
+                  <span class="shrink-0 inline-flex rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 border border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20">
                     Short {{ (int)$d->shortage }}
                   </span>
                 @else
-                  <span class="shrink-0 inline-flex rounded-full bg-green-50 dark:bg-green-500/10 px-2.5 py-1 text-xs font-semibold text-green-700 dark:text-green-400 border border-green-200 dark:border-green-500/20">
+                  <span class="shrink-0 inline-flex rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700 border border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20">
                     Ready
                   </span>
                 @endif
@@ -396,23 +389,23 @@
             </div>
 
             @if($publicMode)
-              <div class="mt-4 rounded-xl bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 p-3">
+              <div class="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-3 dark:bg-slate-900/70 dark:border-slate-700">
                 <div class="text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400">Kebutuhan</div>
                 <div class="mt-1 text-base font-semibold text-slate-900 dark:text-white">{{ $qty }} unit</div>
               </div>
             @else
               <div class="mt-4 grid grid-cols-3 gap-2 text-center">
-                <div class="rounded-xl bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 p-3">
+                <div class="rounded-xl bg-slate-50 border border-slate-200 p-3 dark:bg-slate-900/70 dark:border-slate-700">
                   <div class="text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400">Need</div>
                   <div class="mt-1 text-base font-semibold text-slate-900 dark:text-white">{{ $qty }}</div>
                 </div>
 
-                <div class="rounded-xl bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 p-3">
+                <div class="rounded-xl bg-slate-50 border border-slate-200 p-3 dark:bg-slate-900/70 dark:border-slate-700">
                   <div class="text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400">Stock</div>
                   <div class="mt-1 text-base font-semibold text-slate-900 dark:text-white">{{ (int)$d->available }}</div>
                 </div>
 
-                <div class="rounded-xl bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 p-3">
+                <div class="rounded-xl bg-slate-50 border border-slate-200 p-3 dark:bg-slate-900/70 dark:border-slate-700">
                   <div class="text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400">Short</div>
                   <div class="mt-1 text-base font-semibold {{ (int)$d->shortage > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white' }}">
                     {{ (int)$d->shortage }}
@@ -420,7 +413,7 @@
                 </div>
               </div>
 
-              <div class="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 dark:border-slate-700 pt-3 text-sm">
+              <div class="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 pt-3 text-sm dark:border-slate-700">
                 <span class="text-slate-500 dark:text-slate-400">Unit Rp {{ number_format($price,0,',','.') }}</span>
                 <span class="font-semibold text-slate-900 dark:text-white">Rp {{ number_format($lineTotal,0,',','.') }}</span>
               </div>
@@ -515,7 +508,7 @@
         <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Summary of estimated costs</p>
       </div>
 
-      <div class="rounded-xl border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/50 p-5 space-y-3">
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-5 space-y-3 dark:border-slate-700/50 dark:bg-slate-950/40">
         @unless($publicMode)
           <div class="flex items-center justify-between text-sm">
             <span class="text-slate-600 dark:text-slate-400">Equipment</span>
@@ -549,7 +542,6 @@
           <span class="text-slate-900 dark:text-white font-semibold">{{ $publicMode ? 'Total Estimasi' : 'Total' }}</span>
           <span class="text-slate-900 dark:text-white font-semibold text-lg">Rp {{ number_format((int)($estimation->total_cost ?? 0),0,',','.') }}</span>
         </div>
-
       </div>
     </div>
   </div>

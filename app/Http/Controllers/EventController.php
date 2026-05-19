@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Event;
 use App\Models\Estimation;
 use App\Models\EstimationDetail;
+use App\Models\Inventory;
+use App\Models\Rule;
 use App\Models\Setting;
 use App\Services\InferenceEngineService;
 use Illuminate\Http\Request;
@@ -30,8 +32,46 @@ class EventController extends Controller
         return (int) $userId;
     }
 
+    private function estimationReadiness(): array
+    {
+        $tenantId = $this->tenantId();
+
+        $inventoryCount = Inventory::where('tenant_id', $tenantId)->count();
+        $ruleCount = Rule::where('tenant_id', $tenantId)->count();
+
+        return [
+            'inventoryCount' => $inventoryCount,
+            'ruleCount' => $ruleCount,
+            'canCreateEstimation' => $inventoryCount > 0 && $ruleCount > 0,
+        ];
+    }
+
+    private function redirectIfEstimationNotReady()
+    {
+        $readiness = $this->estimationReadiness();
+
+        if (! $readiness['canCreateEstimation']) {
+            return redirect()
+                ->route('estimations.locked')
+                ->with('warning', 'Inventory dan rules masih kosong. Silakan isi terlebih dahulu sebelum membuat estimasi.');
+        }
+
+        return null;
+    }
+
+    public function locked()
+    {
+        $readiness = $this->estimationReadiness();
+
+        return view('pages.estimations.locked', $readiness);
+    }
+
     public function create()
     {
+        if ($redirect = $this->redirectIfEstimationNotReady()) {
+            return $redirect;
+        }
+
         $this->tenantId();
 
         $freeCitiesRaw = (string) Setting::getValue('transport_free_cities', 'surabaya,sidoarjo,gresik');
@@ -45,6 +85,7 @@ class EventController extends Controller
 
         if (is_string($cityRatesRaw)) {
             $decoded = json_decode($cityRatesRaw, true);
+
             if (is_array($decoded)) {
                 $cityRates = $decoded;
             }
@@ -65,6 +106,10 @@ class EventController extends Controller
 
     public function store(Request $request, InferenceEngineService $engine)
     {
+        if ($redirect = $this->redirectIfEstimationNotReady()) {
+            return $redirect;
+        }
+
         $userId = $this->userId();
         $tenantId = $this->tenantId();
 

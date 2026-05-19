@@ -1,6 +1,8 @@
 {{-- resources/views/layouts/app-shell.blade.php --}}
 @php
   use App\Models\Setting;
+  use App\Models\Inventory;
+  use App\Models\Rule;
   use Illuminate\Support\Facades\Lang;
 
   // ✅ Safe translator (kalau key tidak ada / hasilnya array -> fallback)
@@ -29,6 +31,19 @@
   $user = auth()->user();
   $userName = $user?->name ?? 'Admin';
 
+  // Estimation readiness
+  $tenantId = $user?->tenant_id;
+
+  $inventoryCountForEstimation = $tenantId
+      ? Inventory::where('tenant_id', $tenantId)->count()
+      : 0;
+
+  $ruleCountForEstimation = $tenantId
+      ? Rule::where('tenant_id', $tenantId)->count()
+      : 0;
+
+  $canCreateEstimation = $inventoryCountForEstimation > 0 && $ruleCountForEstimation > 0;
+
   // Avatar initials
   $n = $userName;
   $parts = preg_split('/\s+/', trim($n));
@@ -43,6 +58,7 @@
   $base = "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200";
   $active = "bg-blue-600/10 text-blue-700 ring-1 ring-blue-200 dark:bg-blue-400/10 dark:text-blue-300 dark:ring-blue-500/20";
   $inactive = "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white";
+  $locked = "text-slate-400 bg-slate-100/70 cursor-not-allowed dark:text-slate-500 dark:bg-slate-800/40";
 @endphp
 
 <!doctype html>
@@ -104,16 +120,26 @@
           {{ $t('nav.dashboard','Dashboard') }}
         </a>
 
-        <a href="{{ route('events.create') }}"
-           class="{{ $base }} {{ request()->routeIs('events.create') ? $active : $inactive }}">
+        <a href="{{ $canCreateEstimation ? route('events.create') : route('estimations.locked') }}"
+           title="{{ $canCreateEstimation ? 'Buat estimasi baru' : 'Inventory dan rules masih kosong. Silakan isi terlebih dahulu.' }}"
+           class="{{ $base }} {{ request()->routeIs('events.create') ? $active : ($canCreateEstimation ? $inactive : $locked) }}">
           <svg class="h-5 w-5 opacity-80" viewBox="0 0 24 24" fill="none">
             <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
-          {{ $t('nav.new_estimation','Estimasi Baru') }}
+
+          <span class="flex-1">
+            {{ $t('nav.new_estimation','Estimasi Baru') }}
+          </span>
+
+          @unless($canCreateEstimation)
+            <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+              Locked
+            </span>
+          @endunless
         </a>
 
         <a href="{{ route('estimations.index') }}"
-           class="{{ $base }} {{ request()->routeIs('estimations.*') ? $active : $inactive }}">
+           class="{{ $base }} {{ request()->routeIs('estimations.*') && !request()->routeIs('estimations.locked') ? $active : $inactive }}">
           <svg class="h-5 w-5 opacity-80" viewBox="0 0 24 24" fill="none">
             <path d="M7 3h10v18H7V3Z" stroke="currentColor" stroke-width="2"/>
             <path d="M9 7h6M9 11h6M9 15h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>

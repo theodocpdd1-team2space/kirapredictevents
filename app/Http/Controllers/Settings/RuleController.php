@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Models\Inventory;
 use App\Models\Rule;
 use Illuminate\Http\Request;
 
@@ -25,6 +26,53 @@ class RuleController extends Controller
     private function guardTenantRule(Rule $rule): void
     {
         abort_unless((int) $rule->tenant_id === $this->tenantId(), 403);
+    }
+
+    private function inventoriesForRuleBuilder()
+    {
+        return Inventory::query()
+            ->where('tenant_id', $this->tenantId())
+            ->where('status', 'active')
+            ->orderBy('equipment_name', 'asc')
+            ->get([
+                'id',
+                'equipment_name',
+                'category',
+                'quantity',
+                'price',
+                'status',
+            ]);
+    }
+
+    private function ruleCategoriesForBuilder()
+    {
+        $defaultCategories = [
+            'package',
+            'event_type',
+            'music',
+            'power',
+            'duration',
+            'reliability',
+            'it',
+            'rigging',
+            'wireless',
+            'microphone',
+            'custom',
+        ];
+
+        $dbCategories = Rule::query()
+            ->where('tenant_id', $this->tenantId())
+            ->whereNotNull('category')
+            ->where('category', '!=', '')
+            ->distinct()
+            ->orderBy('category')
+            ->pluck('category')
+            ->toArray();
+
+        return collect(array_merge($defaultCategories, $dbCategories))
+            ->filter()
+            ->unique()
+            ->values();
     }
 
     public function index(Request $request)
@@ -55,7 +103,10 @@ class RuleController extends Controller
     {
         $this->guardOwnerRole();
 
-        return view('pages.settings.rules.create');
+        $inventories = $this->inventoriesForRuleBuilder();
+        $ruleCategories = $this->ruleCategoriesForBuilder();
+
+        return view('pages.settings.rules.create', compact('inventories', 'ruleCategories'));
     }
 
     public function store(Request $request)
@@ -66,7 +117,7 @@ class RuleController extends Controller
             'condition_field' => ['required', 'string', 'max:100'],
             'operator'        => ['required', 'string', 'max:20'],
             'value'           => ['required', 'string', 'max:255'],
-		'action'          => ['required', 'string'],
+            'action'          => ['required', 'string'],
             'category'        => ['nullable', 'string', 'max:100'],
             'priority'        => ['required', 'integer', 'min:0', 'max:9999'],
             'is_active'       => ['nullable'],
@@ -89,7 +140,10 @@ class RuleController extends Controller
         $this->guardOwnerRole();
         $this->guardTenantRule($rule);
 
-        return view('pages.settings.rules.edit', compact('rule'));
+        $inventories = $this->inventoriesForRuleBuilder();
+        $ruleCategories = $this->ruleCategoriesForBuilder();
+
+        return view('pages.settings.rules.edit', compact('rule', 'inventories', 'ruleCategories'));
     }
 
     public function update(Request $request, Rule $rule)
@@ -101,7 +155,7 @@ class RuleController extends Controller
             'condition_field' => ['required', 'string', 'max:100'],
             'operator'        => ['required', 'string', 'max:20'],
             'value'           => ['required', 'string', 'max:255'],
-            'action'          => ['nullable'],
+            'action'          => ['required', 'string'],
             'category'        => ['nullable', 'string', 'max:100'],
             'priority'        => ['required', 'integer', 'min:0', 'max:9999'],
             'is_active'       => ['nullable'],
@@ -123,7 +177,7 @@ class RuleController extends Controller
         $this->guardTenantRule($rule);
 
         $rule->update([
-            'is_active' => !$rule->is_active,
+            'is_active' => ! $rule->is_active,
         ]);
 
         return back()->with('success', 'Rule status updated.');
@@ -180,7 +234,7 @@ class RuleController extends Controller
         $required = ['condition_field', 'operator', 'value', 'action', 'category', 'priority', 'is_active'];
 
         foreach ($required as $col) {
-            if (!in_array($col, $header, true)) {
+            if (! in_array($col, $header, true)) {
                 return back()->withErrors([
                     'csv' => 'Header CSV wajib: ' . implode(', ', $required),
                 ]);
@@ -210,7 +264,13 @@ class RuleController extends Controller
             }
 
             $rawAction = trim((string) ($r[$map['action']] ?? ''));
-            $action = $this->normalizeAction($rawAction);
+
+            try {
+                $action = $this->normalizeAction($rawAction);
+            } catch (\Throwable $e) {
+                $skip++;
+                continue;
+            }
 
             $category = trim((string) ($r[$map['category']] ?? ''));
             $priority = (int) ($r[$map['priority']] ?? 100);
@@ -238,26 +298,140 @@ class RuleController extends Controller
             ->with('success', "Import selesai. Berhasil: {$ok}, Dilewati: {$skip}");
     }
 
-private function normalizeAction($action): array
-{
-    if (is_array($action)) {
-        return $action;
+    private function normalizeAction($action): array
+    {
+        if (is_array($action)) {
+            return $action;
+        }
+
+        $action = trim((string) $action);
+
+        if ($action === '') {
+            abort(422, 'Action rules wajib diisi.');
+        }
+
+        if (str_starts_with($action, '[')) {
+            $decoded = json_decode($action, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
+                abort(422, 'Action JSON tidak valid.');
+            }
+
+            return $decoded;
+        }
+
+        return $this->parseActionText($action);
     }
 
-    $action = trim((string) $action);
+    private function parseActionText(string $text): array
+    {
+        $text = trim($text);
 
-    if ($action === '') {
-        abort(422, 'Action JSON wajib diisi.');
+        if ($text === '') {
+            abort(422, 'Action rules wajib diisi.');
+        }
+
+        $normalized = str_replace(["\r\n", "\r"], "\n", $text);
+        $normalized = str_replace(';', "\n", $normalized);
+
+        $lines = array_values(array_filter(array_map(function ($line) {
+            return trim((string) $line);
+        }, explode("\n", $normalized))));
+
+        $actions = [];
+
+        foreach ($lines as $index => $line) {
+            if (str_starts_with($line, '#')) {
+                continue;
+            }
+
+            if (! str_contains($line, ':')) {
+                abort(422, 'Format action baris ke-' . ($index + 1) . ' tidak valid. Gunakan format LABEL:, EQUIPMENT:, atau CREW:.');
+            }
+
+            [$rawType, $rawPayload] = explode(':', $line, 2);
+
+            $type = strtoupper(trim((string) $rawType));
+            $payload = trim((string) $rawPayload);
+
+            if ($payload === '') {
+                abort(422, 'Isi action baris ke-' . ($index + 1) . ' tidak boleh kosong.');
+            }
+
+            if (in_array($type, ['LABEL', 'PACKAGE', 'PACKAGE_LABEL', 'SET_PACKAGE_LABEL'], true)) {
+                $actions[] = [
+                    'type' => 'SET_PACKAGE_LABEL',
+                    'name' => $payload,
+                ];
+
+                continue;
+            }
+
+            if (in_array($type, ['EQUIPMENT', 'ALAT', 'ADD_EQUIPMENT'], true)) {
+                [$qty, $name] = $this->parseQtyAndText($payload, $index + 1, 'equipment');
+
+                $actions[] = [
+                    'type' => 'ADD_EQUIPMENT',
+                    'qty' => $qty,
+                    'name' => $name,
+                ];
+
+                continue;
+            }
+
+            if (in_array($type, ['CREW', 'STAFF', 'ADD_CREW'], true)) {
+                [$qty, $role] = $this->parseQtyAndText($payload, $index + 1, 'crew');
+
+                $actions[] = [
+                    'type' => 'ADD_CREW',
+                    'qty' => $qty,
+                    'role' => $role,
+                ];
+
+                continue;
+            }
+
+            abort(422, 'Tipe action baris ke-' . ($index + 1) . ' tidak dikenal: ' . $type . '. Gunakan LABEL, EQUIPMENT, atau CREW.');
+        }
+
+        if (count($actions) === 0) {
+            abort(422, 'Action rules minimal berisi 1 baris.');
+        }
+
+        return $actions;
     }
 
-    $decoded = json_decode($action, true);
+    private function parseQtyAndText(string $payload, int $lineNumber, string $context): array
+    {
+        $payload = trim($payload);
 
-    if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
-        abort(422, 'Action harus berupa JSON array yang valid.');
+        $parts = preg_split('/\s*[,|]\s*|\s+-\s+/', $payload, 2);
+
+        if (! is_array($parts) || count($parts) < 2) {
+            $label = $context === 'crew' ? 'role crew' : 'nama alat';
+
+            abort(422, 'Format baris ke-' . $lineNumber . ' tidak valid. Gunakan format: ' . strtoupper($context) . ': jumlah, ' . $label . '.');
+        }
+
+        $qtyRaw = trim((string) ($parts[0] ?? ''));
+        $text = trim((string) ($parts[1] ?? ''));
+
+        if ($qtyRaw === '' || ! is_numeric($qtyRaw)) {
+            abort(422, 'Jumlah pada baris ke-' . $lineNumber . ' harus berupa angka.');
+        }
+
+        $qty = (int) $qtyRaw;
+
+        if ($qty < 1) {
+            abort(422, 'Jumlah pada baris ke-' . $lineNumber . ' minimal 1.');
+        }
+
+        if ($text === '') {
+            $label = $context === 'crew' ? 'Role crew' : 'Nama alat';
+
+            abort(422, $label . ' pada baris ke-' . $lineNumber . ' wajib diisi.');
+        }
+
+        return [$qty, $text];
     }
-
-    return $decoded;
-}
-
-
 }

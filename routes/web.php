@@ -47,6 +47,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/estimations', [EstimationController::class, 'index'])->name('estimations.index');
     Route::delete('/estimations/bulk-delete', [EstimationController::class, 'bulkDelete'])->name('estimations.bulkDelete');
 
+    Route::get('/estimations/locked', [EventController::class, 'locked'])->name('estimations.locked');
+
     Route::get('/estimations/{estimation}', [EstimationController::class, 'show'])->name('estimations.show');
     Route::get('/estimations/{estimation}/edit', [EstimationController::class, 'edit'])->name('estimations.edit');
     Route::patch('/estimations/{estimation}', [EstimationController::class, 'update'])->name('estimations.update');

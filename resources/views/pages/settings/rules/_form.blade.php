@@ -175,85 +175,103 @@
     </div>
   @endif
 
-  <div class="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-    <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+  {{-- Header --}}
+  <div class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div class="grid gap-6 lg:grid-cols-[1fr_360px] lg:items-end">
       <div>
-        <h2 class="text-lg font-black text-slate-900 dark:text-white">
+        <div class="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-widest text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
+          Rule Builder
+        </div>
+
+        <h2 class="mt-4 text-2xl font-black tracking-tight text-slate-900 dark:text-white">
           Layered Rule Builder
         </h2>
-        <p class="mt-1 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-          Buat rule berdasarkan layer inferensi. Equipment diambil dari inventory, category diambil dari database rule.
+
+        <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+          Pilih jenis rule, lalu sistem otomatis mengisi field teknis. Equipment diambil dari inventory agar nama alat selalu match.
         </p>
       </div>
 
-      <div class="grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1 dark:bg-slate-950/60 md:grid-cols-5">
-        <button type="button" @click="setMode('package')" :class="tabClass('package')" class="rounded-xl px-3 py-2 text-xs font-black transition">
-          Package
-        </button>
-        <button type="button" @click="setMode('event_type')" :class="tabClass('event_type')" class="rounded-xl px-3 py-2 text-xs font-black transition">
-          Event Type
-        </button>
-        <button type="button" @click="setMode('special_requirement')" :class="tabClass('special_requirement')" class="rounded-xl px-3 py-2 text-xs font-black transition">
-          Requirement
-        </button>
-        <button type="button" @click="setMode('condition')" :class="tabClass('condition')" class="rounded-xl px-3 py-2 text-xs font-black transition">
-          Condition
-        </button>
-        <button type="button" @click="setMode('custom')" :class="tabClass('custom')" class="rounded-xl px-3 py-2 text-xs font-black transition">
-          Custom
-        </button>
+      <div>
+        <label class="mb-2 block text-xs font-black uppercase tracking-widest text-slate-400">
+          Jenis Rule
+        </label>
+
+        <select x-model="mode"
+                @change="setMode(mode)"
+                class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+          <option value="package">Layer 1-2 — Package Rule</option>
+          <option value="event_type">Layer 3 — Event Type Rule</option>
+          <option value="special_requirement">Layer 4 — Special Requirement Rule</option>
+          <option value="condition">Layer 4 — Venue / Duration / Service Rule</option>
+          <option value="custom">Advanced — Custom Rule</option>
+        </select>
       </div>
     </div>
   </div>
 
+  {{-- Layer Cards --}}
   <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
-    <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-500/20 dark:bg-blue-500/10">
-      <p class="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-300">Layer 1-2</p>
-      <p class="mt-1 text-sm font-bold text-slate-900 dark:text-white">Package</p>
+    <div class="rounded-2xl border p-4 transition"
+         :class="mode === 'package' ? 'border-blue-300 bg-blue-50 dark:border-blue-500/30 dark:bg-blue-500/10' : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'">
+      <p class="text-xs font-black uppercase tracking-widest" :class="mode === 'package' ? 'text-blue-600 dark:text-blue-300' : 'text-slate-400'">
+        Layer 1-2
+      </p>
+      <p class="mt-1 text-sm font-black text-slate-900 dark:text-white">Package</p>
       <p class="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Paket dasar dari peserta + service level.</p>
     </div>
 
-    <div class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-      <p class="text-xs font-black uppercase tracking-widest text-slate-400">Layer 3</p>
-      <p class="mt-1 text-sm font-bold text-slate-900 dark:text-white">Event Type</p>
+    <div class="rounded-2xl border p-4 transition"
+         :class="mode === 'event_type' ? 'border-blue-300 bg-blue-50 dark:border-blue-500/30 dark:bg-blue-500/10' : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'">
+      <p class="text-xs font-black uppercase tracking-widest" :class="mode === 'event_type' ? 'text-blue-600 dark:text-blue-300' : 'text-slate-400'">
+        Layer 3
+      </p>
+      <p class="mt-1 text-sm font-black text-slate-900 dark:text-white">Event Type</p>
       <p class="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Tambahan berdasarkan jenis acara.</p>
     </div>
 
-    <div class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-      <p class="text-xs font-black uppercase tracking-widest text-slate-400">Layer 4</p>
-      <p class="mt-1 text-sm font-bold text-slate-900 dark:text-white">Requirement</p>
+    <div class="rounded-2xl border p-4 transition"
+         :class="mode === 'special_requirement' ? 'border-blue-300 bg-blue-50 dark:border-blue-500/30 dark:bg-blue-500/10' : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'">
+      <p class="text-xs font-black uppercase tracking-widest" :class="mode === 'special_requirement' ? 'text-blue-600 dark:text-blue-300' : 'text-slate-400'">
+        Layer 4
+      </p>
+      <p class="mt-1 text-sm font-black text-slate-900 dark:text-white">Requirement</p>
       <p class="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Band, drum, rider, livestream, dll.</p>
     </div>
 
-    <div class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-      <p class="text-xs font-black uppercase tracking-widest text-slate-400">Layer 4</p>
-      <p class="mt-1 text-sm font-bold text-slate-900 dark:text-white">Condition</p>
+    <div class="rounded-2xl border p-4 transition"
+         :class="mode === 'condition' ? 'border-blue-300 bg-blue-50 dark:border-blue-500/30 dark:bg-blue-500/10' : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'">
+      <p class="text-xs font-black uppercase tracking-widest" :class="mode === 'condition' ? 'text-blue-600 dark:text-blue-300' : 'text-slate-400'">
+        Layer 4
+      </p>
+      <p class="mt-1 text-sm font-black text-slate-900 dark:text-white">Condition</p>
       <p class="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Venue, duration, power, backup.</p>
     </div>
   </div>
 
-  <div x-show="mode === 'package'" class="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-    <h3 class="text-sm font-black text-slate-900 dark:text-white">Package Rule</h3>
+  {{-- Package Builder --}}
+  <div x-show="mode === 'package'" class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <h3 class="text-lg font-black text-slate-900 dark:text-white">Package Rule</h3>
     <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
       Digunakan untuk menentukan paket dasar. Sistem otomatis membuat <span class="font-mono font-bold">package_key</span>.
     </p>
 
-    <div class="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2">
+    <div class="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
       <div>
         <label class="block text-sm font-bold text-slate-900 dark:text-white">Range Peserta</label>
         <div class="mt-3 grid grid-cols-2 gap-3">
           <input type="number" x-model="packageMin" @input="syncPackageRule()" min="1" placeholder="Dari"
-                 class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+                 class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
 
           <input type="number" x-model="packageMax" @input="syncPackageRule()" min="1" placeholder="Sampai"
-                 class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+                 class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
         </div>
       </div>
 
       <div>
         <label class="block text-sm font-bold text-slate-900 dark:text-white">Service Level</label>
         <select x-model="serviceLevel" @change="syncPackageRule()"
-                class="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+                class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
           <option value="basic">Basic</option>
           <option value="standard">Standard</option>
           <option value="premium">Premium</option>
@@ -263,22 +281,23 @@
       <div class="md:col-span-2">
         <label class="block text-sm font-bold text-slate-900 dark:text-white">Nama Paket</label>
         <input type="text" x-model="packageName" @input="syncAction()"
-               class="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+               class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
       </div>
     </div>
   </div>
 
-  <div x-show="mode === 'event_type'" class="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-    <h3 class="text-sm font-black text-slate-900 dark:text-white">Event Type Rule</h3>
+  {{-- Event Type Builder --}}
+  <div x-show="mode === 'event_type'" class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <h3 class="text-lg font-black text-slate-900 dark:text-white">Event Type Rule</h3>
     <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
       Digunakan untuk menambah kebutuhan berdasarkan jenis acara.
     </p>
 
-    <div class="mt-5 grid grid-cols-1 gap-5 md:grid-cols-3">
+    <div class="mt-6 grid grid-cols-1 gap-5 md:grid-cols-3">
       <div>
         <label class="block text-sm font-bold text-slate-900 dark:text-white">Jenis Acara</label>
         <select x-model="eventType" @change="syncEventTypeRule()"
-                class="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+                class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
           <option value="wedding">Wedding</option>
           <option value="seminar">Seminar</option>
           <option value="graduation">Graduation</option>
@@ -292,7 +311,7 @@
       <div>
         <label class="block text-sm font-bold text-slate-900 dark:text-white">Category</label>
         <select x-model="categoryValue" @change="syncAction()"
-                class="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+                class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
           <template x-for="cat in categoryOptions" :key="cat">
             <option :value="cat" x-text="cat"></option>
           </template>
@@ -302,28 +321,46 @@
       <div>
         <label class="block text-sm font-bold text-slate-900 dark:text-white">Priority</label>
         <input type="number" x-model="priority"
-               class="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+               class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
       </div>
     </div>
   </div>
 
-  <div x-show="mode === 'special_requirement'" class="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-    <h3 class="text-sm font-black text-slate-900 dark:text-white">Special Requirement Rule</h3>
+  {{-- Requirement Builder --}}
+  <div x-show="mode === 'special_requirement'" class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <h3 class="text-lg font-black text-slate-900 dark:text-white">Special Requirement Rule</h3>
     <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
       Digunakan untuk kebutuhan tambahan seperti band, drum, keyboard, livestream, rider, rigging, dan microphone.
     </p>
 
-    <div class="mt-5 grid grid-cols-1 gap-5 md:grid-cols-4">
+    <div class="mt-6 grid grid-cols-1 gap-5 md:grid-cols-4">
       <div>
         <label class="block text-sm font-bold text-slate-900 dark:text-white">Keyword</label>
-        <input type="text" x-model="requirementKeyword" @input="syncRequirementRule()" placeholder="Contoh: band"
-               class="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+        <select x-model="requirementKeyword" @change="syncRequirementRule()"
+                class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+          <option value="band">band</option>
+          <option value="drum">drum</option>
+          <option value="keyboard">keyboard</option>
+          <option value="rd2000">rd2000</option>
+          <option value="gitar">gitar</option>
+          <option value="bass">bass</option>
+          <option value="dj">dj</option>
+          <option value="rider">rider</option>
+          <option value="urgent">urgent</option>
+          <option value="record">record</option>
+          <option value="livestream">livestream</option>
+          <option value="line array">line array</option>
+          <option value="wireless">wireless</option>
+          <option value="podium">podium</option>
+          <option value="clipon">clipon</option>
+          <option value="headset">headset</option>
+        </select>
       </div>
 
       <div>
         <label class="block text-sm font-bold text-slate-900 dark:text-white">Category</label>
         <select x-model="requirementCategory" @change="syncRequirementRule()"
-                class="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+                class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
           <template x-for="cat in categoryOptions" :key="cat">
             <option :value="cat" x-text="cat"></option>
           </template>
@@ -333,28 +370,29 @@
       <div>
         <label class="block text-sm font-bold text-slate-900 dark:text-white">Priority</label>
         <input type="number" x-model="priority"
-               class="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+               class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
       </div>
 
       <div>
         <label class="block text-sm font-bold text-slate-900 dark:text-white">Operator</label>
         <input type="text" x-model="operatorValue" readonly
-               class="mt-3 w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-500 outline-none dark:border-slate-700 dark:bg-slate-950/50 dark:text-slate-400">
+               class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-500 outline-none dark:border-slate-700 dark:bg-slate-950/50 dark:text-slate-400">
       </div>
     </div>
   </div>
 
-  <div x-show="mode === 'condition'" class="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-    <h3 class="text-sm font-black text-slate-900 dark:text-white">Venue / Duration / Service Rule</h3>
+  {{-- Condition Builder --}}
+  <div x-show="mode === 'condition'" class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <h3 class="text-lg font-black text-slate-900 dark:text-white">Venue / Duration / Service Rule</h3>
     <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
       Digunakan untuk venue outdoor, durasi panjang, service premium, power, dan backup equipment.
     </p>
 
-    <div class="mt-5 grid grid-cols-1 gap-5 md:grid-cols-5">
+    <div class="mt-6 grid grid-cols-1 gap-5 md:grid-cols-5">
       <div>
         <label class="block text-sm font-bold text-slate-900 dark:text-white">Field</label>
         <select x-model="conditionField" @change="syncConditionRule(true)"
-                class="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+                class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
           <option value="venue_type">venue_type</option>
           <option value="duration">duration</option>
           <option value="service_level">service_level</option>
@@ -364,7 +402,7 @@
       <div>
         <label class="block text-sm font-bold text-slate-900 dark:text-white">Operator</label>
         <select x-model="operatorValue" @change="syncConditionRule(false)"
-                class="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+                class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
           <option value="=">=</option>
           <option value=">">&gt;</option>
           <option value=">=">&gt;=</option>
@@ -377,14 +415,37 @@
 
       <div>
         <label class="block text-sm font-bold text-slate-900 dark:text-white">Value</label>
-        <input type="text" x-model="ruleValue" @input="syncConditionRule(false)" placeholder="outdoor / 5-8 / premium"
-               class="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+
+        <template x-if="conditionField === 'venue_type'">
+          <select x-model="ruleValue" @change="syncConditionRule(false)"
+                  class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+            <option value="outdoor">outdoor</option>
+            <option value="indoor">indoor</option>
+          </select>
+        </template>
+
+        <template x-if="conditionField === 'service_level'">
+          <select x-model="ruleValue" @change="syncConditionRule(false)"
+                  class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+            <option value="basic">basic</option>
+            <option value="standard">standard</option>
+            <option value="premium">premium</option>
+          </select>
+        </template>
+
+        <template x-if="conditionField === 'duration'">
+          <input type="text"
+                 x-model="ruleValue"
+                 @input="syncConditionRule(false)"
+                 placeholder="Contoh: 5-8 atau 8"
+                 class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+        </template>
       </div>
 
       <div>
         <label class="block text-sm font-bold text-slate-900 dark:text-white">Category</label>
         <select x-model="categoryValue" @change="syncAction()"
-                class="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+                class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
           <template x-for="cat in categoryOptions" :key="cat">
             <option :value="cat" x-text="cat"></option>
           </template>
@@ -394,22 +455,23 @@
       <div>
         <label class="block text-sm font-bold text-slate-900 dark:text-white">Priority</label>
         <input type="number" x-model="priority"
-               class="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
+               class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
       </div>
     </div>
   </div>
 
-  <div x-show="mode !== 'custom'" class="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+  {{-- Equipment Action --}}
+  <div x-show="mode !== 'custom'" class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
-        <h3 class="text-sm font-black text-slate-900 dark:text-white">Equipment Action</h3>
+        <h3 class="text-lg font-black text-slate-900 dark:text-white">Equipment Action</h3>
         <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Pilih alat dari inventory agar nama equipment selalu match.
         </p>
       </div>
 
       <button type="button" @click="addEquipment()" @disabled($inventoryOptions->count() === 0)
-              class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-xs font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500">
+              class="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500">
         + Tambah Alat
       </button>
     </div>
@@ -449,17 +511,18 @@
     </div>
   </div>
 
-  <div x-show="mode !== 'custom'" class="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+  {{-- Crew Action --}}
+  <div x-show="mode !== 'custom'" class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
-        <h3 class="text-sm font-black text-slate-900 dark:text-white">Crew Action</h3>
+        <h3 class="text-lg font-black text-slate-900 dark:text-white">Crew Action</h3>
         <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Tambahkan crew jika rule membutuhkan operator, engineer, stage, atau helper.
         </p>
       </div>
 
       <button type="button" @click="addCrew()"
-              class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-xs font-black text-white transition hover:bg-blue-700">
+              class="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700">
         + Tambah Crew
       </button>
     </div>
@@ -496,12 +559,13 @@
     </div>
   </div>
 
-  <div class="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+  {{-- Advanced Backend Fields --}}
+  <div class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
     <details :open="mode === 'custom'">
       <summary class="cursor-pointer list-none">
         <div class="flex items-center justify-between gap-4">
           <div>
-            <h3 class="text-sm font-black text-slate-900 dark:text-white">Advanced Rule Fields</h3>
+            <h3 class="text-lg font-black text-slate-900 dark:text-white">Advanced Rule Fields</h3>
             <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Field teknis yang akan disimpan ke database. Pada mode builder, field ini otomatis terisi.
             </p>
@@ -571,8 +635,9 @@
     </details>
   </div>
 
-  <div class="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-    <h3 class="text-sm font-black text-slate-900 dark:text-white">Preview Generated Rule</h3>
+  {{-- Preview --}}
+  <div class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <h3 class="text-lg font-black text-slate-900 dark:text-white">Preview Generated Rule</h3>
 
     <div class="mt-4 grid gap-4 lg:grid-cols-2">
       <div class="rounded-2xl bg-slate-50 p-4 text-xs dark:bg-slate-950/60">
@@ -605,7 +670,7 @@
       eventType: @json($fieldValue === 'event_type' ? $ruleValue : 'wedding'),
 
       requirementKeyword: @json($fieldValue === 'special_requirement' ? $ruleValue : 'band'),
-      requirementCategory: @json($categoryValue ?: 'music'),
+      requirementCategory: @json($fieldValue === 'special_requirement' ? ($categoryValue ?: 'music') : 'music'),
 
       conditionField: @json($fieldValue),
       operatorValue: @json($operatorValue),
@@ -623,12 +688,6 @@
         if (this.mode === 'special_requirement') this.syncRequirementRule();
         if (this.mode === 'condition') this.syncConditionRule(false);
         if (!this.actionText) this.syncAction();
-      },
-
-      tabClass(key) {
-        return this.mode === key
-          ? 'bg-white text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-300'
-          : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white';
       },
 
       setMode(key) {
@@ -679,7 +738,10 @@
         this.conditionField = 'event_type';
         this.operatorValue = '=';
         this.ruleValue = this.eventType || 'wedding';
-        this.categoryValue = this.categoryValue || 'event_type';
+
+        if (!this.categoryValue || this.categoryValue === 'package') {
+          this.categoryValue = 'event_type';
+        }
 
         if (!this.priority || parseInt(this.priority) < 100 || parseInt(this.priority) > 139) {
           this.priority = '120';
@@ -692,8 +754,13 @@
       syncRequirementRule() {
         this.conditionField = 'special_requirement';
         this.operatorValue = 'contains';
-        this.ruleValue = this.requirementKeyword || '';
-        this.categoryValue = this.requirementCategory || 'music';
+        this.ruleValue = this.requirementKeyword || 'band';
+
+        if (!this.requirementCategory || this.requirementCategory === 'package') {
+          this.requirementCategory = 'music';
+        }
+
+        this.categoryValue = this.requirementCategory;
 
         if (!this.priority || parseInt(this.priority) < 140 || parseInt(this.priority) > 199) {
           this.priority = '140';
@@ -760,11 +827,7 @@
       },
 
       addEquipment() {
-        this.equipments.push({
-          qty: 1,
-          name: ''
-        });
-
+        this.equipments.push({ qty: 1, name: '' });
         this.syncAction();
       },
 
@@ -774,11 +837,7 @@
       },
 
       addCrew() {
-        this.crews.push({
-          qty: 1,
-          role: 'operator'
-        });
-
+        this.crews.push({ qty: 1, role: 'operator' });
         this.syncAction();
       },
 

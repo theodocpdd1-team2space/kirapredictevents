@@ -25,19 +25,25 @@
 
               if ($type === 'SET_PACKAGE_LABEL') {
                   $name = trim((string) ($item['name'] ?? ''));
-                  if ($name !== '') $actionRows[] = 'LABEL: '.$name;
+                  if ($name !== '') {
+                      $actionRows[] = 'LABEL: '.$name;
+                  }
               }
 
               if ($type === 'ADD_EQUIPMENT') {
                   $qty = (int) ($item['qty'] ?? 1);
                   $name = trim((string) ($item['name'] ?? ''));
-                  if ($name !== '') $actionRows[] = 'EQUIPMENT: '.$qty.', '.$name;
+                  if ($name !== '') {
+                      $actionRows[] = 'EQUIPMENT: '.$qty.', '.$name;
+                  }
               }
 
               if ($type === 'ADD_CREW') {
                   $qty = (int) ($item['qty'] ?? 1);
                   $role = trim((string) ($item['role'] ?? ''));
-                  if ($role !== '') $actionRows[] = 'CREW: '.$qty.', '.$role;
+                  if ($role !== '') {
+                      $actionRows[] = 'CREW: '.$qty.', '.$role;
+                  }
               }
           }
       }
@@ -177,7 +183,7 @@
 
   {{-- Header --}}
   <div class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-    <div class="grid gap-6 lg:grid-cols-[1fr_360px] lg:items-end">
+    <div class="grid gap-6 lg:grid-cols-[1fr_390px] lg:items-end">
       <div>
         <div class="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-widest text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
           Rule Builder
@@ -200,10 +206,10 @@
         <select x-model="mode"
                 @change="setMode(mode)"
                 class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
-          <option value="package">Layer 1-2 — Package Rule</option>
-          <option value="event_type">Layer 3 — Event Type Rule</option>
-          <option value="special_requirement">Layer 4 — Special Requirement Rule</option>
-          <option value="condition">Layer 4 — Venue / Duration / Service Rule</option>
+          <option value="package">Layer 1 + 2 — Package Dasar</option>
+          <option value="event_type">Layer 3 — Jenis Acara</option>
+          <option value="special_requirement">Layer 4 — Kebutuhan Tambahan</option>
+          <option value="condition">Layer 4 — Venue / Durasi / Service</option>
           <option value="custom">Advanced — Custom Rule</option>
         </select>
       </div>
@@ -215,10 +221,12 @@
     <div class="rounded-2xl border p-4 transition"
          :class="mode === 'package' ? 'border-blue-300 bg-blue-50 dark:border-blue-500/30 dark:bg-blue-500/10' : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'">
       <p class="text-xs font-black uppercase tracking-widest" :class="mode === 'package' ? 'text-blue-600 dark:text-blue-300' : 'text-slate-400'">
-        Layer 1-2
+        Layer 1 + 2
       </p>
-      <p class="mt-1 text-sm font-black text-slate-900 dark:text-white">Package</p>
-      <p class="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Paket dasar dari peserta + service level.</p>
+      <p class="mt-1 text-sm font-black text-slate-900 dark:text-white">Package Dasar</p>
+      <p class="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">
+        Jumlah peserta + service level menjadi package_key.
+      </p>
     </div>
 
     <div class="rounded-2xl border p-4 transition"
@@ -226,8 +234,10 @@
       <p class="text-xs font-black uppercase tracking-widest" :class="mode === 'event_type' ? 'text-blue-600 dark:text-blue-300' : 'text-slate-400'">
         Layer 3
       </p>
-      <p class="mt-1 text-sm font-black text-slate-900 dark:text-white">Event Type</p>
-      <p class="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Tambahan berdasarkan jenis acara.</p>
+      <p class="mt-1 text-sm font-black text-slate-900 dark:text-white">Jenis Acara</p>
+      <p class="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">
+        Tambahan berdasarkan wedding, seminar, concert, dll.
+      </p>
     </div>
 
     <div class="rounded-2xl border p-4 transition"
@@ -235,8 +245,10 @@
       <p class="text-xs font-black uppercase tracking-widest" :class="mode === 'special_requirement' ? 'text-blue-600 dark:text-blue-300' : 'text-slate-400'">
         Layer 4
       </p>
-      <p class="mt-1 text-sm font-black text-slate-900 dark:text-white">Requirement</p>
-      <p class="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Band, drum, rider, livestream, dll.</p>
+      <p class="mt-1 text-sm font-black text-slate-900 dark:text-white">Kebutuhan Tambahan</p>
+      <p class="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">
+        Band, drum, rider, livestream, rigging, microphone.
+      </p>
     </div>
 
     <div class="rounded-2xl border p-4 transition"
@@ -244,21 +256,23 @@
       <p class="text-xs font-black uppercase tracking-widest" :class="mode === 'condition' ? 'text-blue-600 dark:text-blue-300' : 'text-slate-400'">
         Layer 4
       </p>
-      <p class="mt-1 text-sm font-black text-slate-900 dark:text-white">Condition</p>
-      <p class="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">Venue, duration, power, backup.</p>
+      <p class="mt-1 text-sm font-black text-slate-900 dark:text-white">Kondisi Teknis</p>
+      <p class="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">
+        Venue, durasi, power, dan backup equipment.
+      </p>
     </div>
   </div>
 
   {{-- Package Builder --}}
   <div x-show="mode === 'package'" class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-    <h3 class="text-lg font-black text-slate-900 dark:text-white">Package Rule</h3>
+    <h3 class="text-lg font-black text-slate-900 dark:text-white">Layer 1 + 2 — Package Dasar</h3>
     <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
-      Digunakan untuk menentukan paket dasar. Sistem otomatis membuat <span class="font-mono font-bold">package_key</span>.
+      Layer 1 menentukan range peserta, Layer 2 menentukan service level. Keduanya digabung menjadi <span class="font-mono font-bold">package_key</span>.
     </p>
 
     <div class="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
       <div>
-        <label class="block text-sm font-bold text-slate-900 dark:text-white">Range Peserta</label>
+        <label class="block text-sm font-bold text-slate-900 dark:text-white">Layer 1 — Range Peserta</label>
         <div class="mt-3 grid grid-cols-2 gap-3">
           <input type="number" x-model="packageMin" @input="syncPackageRule()" min="1" placeholder="Dari"
                  class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
@@ -269,7 +283,7 @@
       </div>
 
       <div>
-        <label class="block text-sm font-bold text-slate-900 dark:text-white">Service Level</label>
+        <label class="block text-sm font-bold text-slate-900 dark:text-white">Layer 2 — Service Level</label>
         <select x-model="serviceLevel" @change="syncPackageRule()"
                 class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
           <option value="basic">Basic</option>
@@ -288,7 +302,7 @@
 
   {{-- Event Type Builder --}}
   <div x-show="mode === 'event_type'" class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-    <h3 class="text-lg font-black text-slate-900 dark:text-white">Event Type Rule</h3>
+    <h3 class="text-lg font-black text-slate-900 dark:text-white">Layer 3 — Jenis Acara</h3>
     <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
       Digunakan untuk menambah kebutuhan berdasarkan jenis acara.
     </p>
@@ -296,7 +310,7 @@
     <div class="mt-6 grid grid-cols-1 gap-5 md:grid-cols-3">
       <div>
         <label class="block text-sm font-bold text-slate-900 dark:text-white">Jenis Acara</label>
-        <select x-model="eventType" @change="syncEventTypeRule()"
+        <select x-model="eventType" @change="syncEventTypeRule(true)"
                 class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
           <option value="wedding">Wedding</option>
           <option value="seminar">Seminar</option>
@@ -328,7 +342,7 @@
 
   {{-- Requirement Builder --}}
   <div x-show="mode === 'special_requirement'" class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-    <h3 class="text-lg font-black text-slate-900 dark:text-white">Special Requirement Rule</h3>
+    <h3 class="text-lg font-black text-slate-900 dark:text-white">Layer 4 — Kebutuhan Tambahan</h3>
     <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
       Digunakan untuk kebutuhan tambahan seperti band, drum, keyboard, livestream, rider, rigging, dan microphone.
     </p>
@@ -336,7 +350,7 @@
     <div class="mt-6 grid grid-cols-1 gap-5 md:grid-cols-4">
       <div>
         <label class="block text-sm font-bold text-slate-900 dark:text-white">Keyword</label>
-        <select x-model="requirementKeyword" @change="syncRequirementRule()"
+        <select x-model="requirementKeyword" @change="syncRequirementRule(true)"
                 class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
           <option value="band">band</option>
           <option value="drum">drum</option>
@@ -359,7 +373,7 @@
 
       <div>
         <label class="block text-sm font-bold text-slate-900 dark:text-white">Category</label>
-        <select x-model="requirementCategory" @change="syncRequirementRule()"
+        <select x-model="requirementCategory" @change="syncRequirementRule(false)"
                 class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950/50 dark:text-white">
           <template x-for="cat in categoryOptions" :key="cat">
             <option :value="cat" x-text="cat"></option>
@@ -383,7 +397,7 @@
 
   {{-- Condition Builder --}}
   <div x-show="mode === 'condition'" class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-    <h3 class="text-lg font-black text-slate-900 dark:text-white">Venue / Duration / Service Rule</h3>
+    <h3 class="text-lg font-black text-slate-900 dark:text-white">Layer 4 — Venue / Durasi / Service</h3>
     <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
       Digunakan untuk venue outdoor, durasi panjang, service premium, power, dan backup equipment.
     </p>
@@ -683,21 +697,72 @@
       actionText: @json($actionPretty),
 
       init() {
-        if (this.mode === 'package') this.syncPackageRule();
-        if (this.mode === 'event_type') this.syncEventTypeRule();
-        if (this.mode === 'special_requirement') this.syncRequirementRule();
-        if (this.mode === 'condition') this.syncConditionRule(false);
-        if (!this.actionText) this.syncAction();
+        if (this.mode === 'package') {
+          this.syncPackageRule();
+        }
+
+        if (this.mode === 'event_type') {
+          this.syncEventTypeRule(false);
+        }
+
+        if (this.mode === 'special_requirement') {
+          this.syncRequirementRule(false);
+        }
+
+        if (this.mode === 'condition') {
+          this.syncConditionRule(false);
+        }
+
+        if (!this.actionText) {
+          this.syncAction();
+        }
       },
 
       setMode(key) {
         this.mode = key;
 
-        if (key === 'package') this.syncPackageRule();
-        if (key === 'event_type') this.syncEventTypeRule();
-        if (key === 'special_requirement') this.syncRequirementRule();
-        if (key === 'condition') this.syncConditionRule(true);
-        if (key === 'custom') this.syncAction();
+        if (key === 'package') {
+          this.conditionField = 'package_key';
+          this.operatorValue = '=';
+          this.categoryValue = 'package';
+          this.priority = '10';
+          this.syncPackageRule();
+        }
+
+        if (key === 'event_type') {
+          this.conditionField = 'event_type';
+          this.operatorValue = '=';
+          this.ruleValue = this.eventType || 'wedding';
+          this.categoryValue = 'event_type';
+          this.priority = '120';
+          this.packageName = '';
+          this.syncAction();
+        }
+
+        if (key === 'special_requirement') {
+          this.conditionField = 'special_requirement';
+          this.operatorValue = 'contains';
+          this.ruleValue = this.requirementKeyword || 'band';
+          this.requirementCategory = 'music';
+          this.categoryValue = 'music';
+          this.priority = '140';
+          this.packageName = '';
+          this.syncAction();
+        }
+
+        if (key === 'condition') {
+          this.conditionField = 'venue_type';
+          this.operatorValue = '=';
+          this.ruleValue = 'outdoor';
+          this.categoryValue = 'power';
+          this.priority = '160';
+          this.packageName = '';
+          this.syncAction();
+        }
+
+        if (key === 'custom') {
+          this.syncAction();
+        }
       },
 
       makePackageKey() {
@@ -734,16 +799,16 @@
         this.syncAction();
       },
 
-      syncEventTypeRule() {
+      syncEventTypeRule(resetDefault = true) {
         this.conditionField = 'event_type';
         this.operatorValue = '=';
         this.ruleValue = this.eventType || 'wedding';
 
-        if (!this.categoryValue || this.categoryValue === 'package') {
+        if (resetDefault || !this.categoryValue || this.categoryValue === 'package') {
           this.categoryValue = 'event_type';
         }
 
-        if (!this.priority || parseInt(this.priority) < 100 || parseInt(this.priority) > 139) {
+        if (resetDefault || !this.priority || parseInt(this.priority) < 100 || parseInt(this.priority) > 139) {
           this.priority = '120';
         }
 
@@ -751,18 +816,23 @@
         this.syncAction();
       },
 
-      syncRequirementRule() {
+      syncRequirementRule(resetDefault = true) {
         this.conditionField = 'special_requirement';
         this.operatorValue = 'contains';
         this.ruleValue = this.requirementKeyword || 'band';
 
-        if (!this.requirementCategory || this.requirementCategory === 'package') {
+        if (
+          resetDefault ||
+          !this.requirementCategory ||
+          this.requirementCategory === 'package' ||
+          this.requirementCategory === 'event_type'
+        ) {
           this.requirementCategory = 'music';
         }
 
         this.categoryValue = this.requirementCategory;
 
-        if (!this.priority || parseInt(this.priority) < 140 || parseInt(this.priority) > 199) {
+        if (resetDefault || !this.priority || parseInt(this.priority) < 140 || parseInt(this.priority) > 199) {
           this.priority = '140';
         }
 
@@ -791,6 +861,44 @@
             this.ruleValue = 'premium';
             this.categoryValue = 'reliability';
             this.priority = '182';
+          }
+        }
+
+        if (this.conditionField === 'venue_type') {
+          this.operatorValue = '=';
+
+          if (!['indoor', 'outdoor'].includes(this.ruleValue)) {
+            this.ruleValue = 'outdoor';
+          }
+
+          if (!this.categoryValue || this.categoryValue === 'event_type' || this.categoryValue === 'package') {
+            this.categoryValue = 'power';
+          }
+        }
+
+        if (this.conditionField === 'duration') {
+          if (!['between', '>', '>=', '<', '<='].includes(this.operatorValue)) {
+            this.operatorValue = 'between';
+          }
+
+          if (!this.ruleValue || ['indoor', 'outdoor', 'basic', 'standard', 'premium'].includes(this.ruleValue)) {
+            this.ruleValue = '5-8';
+          }
+
+          if (!this.categoryValue || this.categoryValue === 'event_type' || this.categoryValue === 'package') {
+            this.categoryValue = 'duration';
+          }
+        }
+
+        if (this.conditionField === 'service_level') {
+          this.operatorValue = '=';
+
+          if (!['basic', 'standard', 'premium'].includes(this.ruleValue)) {
+            this.ruleValue = 'premium';
+          }
+
+          if (!this.categoryValue || this.categoryValue === 'event_type' || this.categoryValue === 'package') {
+            this.categoryValue = 'reliability';
           }
         }
 
@@ -827,7 +935,11 @@
       },
 
       addEquipment() {
-        this.equipments.push({ qty: 1, name: '' });
+        this.equipments.push({
+          qty: 1,
+          name: ''
+        });
+
         this.syncAction();
       },
 
@@ -837,7 +949,11 @@
       },
 
       addCrew() {
-        this.crews.push({ qty: 1, role: 'operator' });
+        this.crews.push({
+          qty: 1,
+          role: 'operator'
+        });
+
         this.syncAction();
       },
 
